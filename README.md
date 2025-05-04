@@ -25,8 +25,7 @@ The system implements a complete pipeline for financial news sentiment analysis:
 
 All required data files can be downloaded from:
 
-[Google Drive Link](https://drive.google.com/drive/folders/1Xzrj9ul8x8Ydis3fNpBx9-FgEJvRFDgx?usp=sharing)
-[Baidu Netdisk Link](https://pan.baidu.com/s/1Xzrj9ul8x8Ydis3fNpBx9-FgEJvRFDgx)
+[Google Drive Link](https://drive.google.com/drive/folders/1Xzrj9ul8x8Ydis3fNpBx9-FgEJvRFDgx?usp=drive_link)
 
 ## Requirements
 
