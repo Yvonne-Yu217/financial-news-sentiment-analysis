@@ -1,0 +1,75 @@
+# Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Data directories
+/images/
+/results/
+/plots/
+
+# Log files
+*.log
+logs/
+
+# macOS specific files
+.DS_Store
+._*
+
+# MongoDB data directory
+/data/
+
+# Model checkpoints and large binary files
+*.pth
+*.h5
+*.pt
+*.ckpt
+*.bin
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Configuration files with secrets
+.env
+.env.local
+config.json
+
+# Excel temp files
+~$*.xlsx
+~$*.xls
+
+# Downloaded datasets
+datasets/
+failed_downloads*.json
+
+# Temporary files
+temp/
+tmp/
