@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 import logging
 import chardet
 import re
+from tqdm import tqdm
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 import json
@@ -19,14 +20,33 @@ import argparse
 import os
 import pandas as pd
 import sys
+from pymongo import ASCENDING
+from collections import Counter
 
-# 配置日志
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_STEM = Path(__file__).stem
+DEFAULT_ARTIFACTS_DIR = SCRIPT_DIR / "run_artifacts" / SCRIPT_STEM
+
+
+def _resolve_artifact_path(path_arg: Optional[str], artifacts_dir: Path, default_name: str) -> str:
+    if not path_arg:
+        return str(artifacts_dir / default_name)
+
+    user_path = Path(path_arg)
+    if user_path.is_absolute() or user_path.parent != Path('.'):
+        user_path.parent.mkdir(parents=True, exist_ok=True)
+        return str(user_path)
+
+    return str(artifacts_dir / user_path.name)
+
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# 配置类
+
 @dataclass
 class Config:
     # MongoDB configuration
@@ -38,12 +58,19 @@ class Config:
     MAX_RETRIES_PER_URL: int = 3
     CONCURRENT_REQUESTS: int = 10  # Number of concurrent requests
     BATCH_SIZE: int = 100  # MongoDB batch write size
+    HTTP_TIMEOUT: int = 30
     
     # Date configuration
     START_DATE: str = "2014-01-01"  # Default start date
-    END_DATE: str = "2024-12-31"    # Default end date
+    END_DATE: str = "2026-3-20"    # Default end date
     EXCEL_FILE: str = "Stock Market Index.xlsx"  # Excel file path
     DATE_COLUMN: str = "Date"       # Date column name
+    CLEAR_EXISTING: bool = False     # Clear existing year collections before crawling
+    ARTIFACTS_DIR: str = str(DEFAULT_ARTIFACTS_DIR)  # Fixed directory for runtime artifacts
+    SUMMARY_FILE: str = str(DEFAULT_ARTIFACTS_DIR / f"{SCRIPT_STEM}_summary.json")
+    CHECKPOINT_FILE: str = str(DEFAULT_ARTIFACTS_DIR / f"{SCRIPT_STEM}_checkpoint.json")
+    STATUS_FILE: str = str(DEFAULT_ARTIFACTS_DIR / f"{SCRIPT_STEM}_status.json")
+    RESUME_FROM_CHECKPOINT: bool = True
     
     # Category mapping
     CATEGORY_MAPPING: Dict[str, str] = field(default_factory=lambda: {
@@ -73,7 +100,7 @@ class Config:
     })
 
     # Failed URLs file path
-    FAILED_URLS_FILE: str = "failed_urls.json"
+    FAILED_URLS_FILE: str = str(DEFAULT_ARTIFACTS_DIR / f"{SCRIPT_STEM}_failed_urls.json")
 
     HEADERS: Dict[str, str] = field(default_factory=lambda: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -101,6 +128,22 @@ class Config:
         parser.add_argument('--date-column', type=str, help='Date column name in Excel file')
         parser.add_argument('--batch-size', type=int, help='Batch write size')
         parser.add_argument('--concurrent', type=int, help='Number of concurrent requests')
+        parser.add_argument('--clear-existing', action='store_true',
+                    help='Clear existing year collections before crawl (dangerous)')
+        parser.add_argument('--summary-file', type=str,
+                    help='Path to structured run summary JSON file')
+        parser.add_argument('--checkpoint-file', type=str,
+                help='Path to checkpoint JSON file for resume')
+        parser.add_argument('--status-file', type=str,
+            help='Path to human-readable status JSON file')
+        parser.add_argument('--failed-urls-file', type=str,
+            help='Path to failed urls JSON file')
+        parser.add_argument('--artifacts-dir', type=str,
+            help='Directory for summary/checkpoint/failed_urls outputs')
+        parser.add_argument('--no-resume', action='store_true',
+                help='Disable resuming from existing checkpoint')
+        parser.add_argument('--reset-checkpoint', action='store_true',
+                help='Delete existing checkpoint file before crawl starts')
         
         args = parser.parse_args()
         
@@ -124,6 +167,39 @@ class Config:
             config.BATCH_SIZE = args.batch_size
         if args.concurrent:
             config.CONCURRENT_REQUESTS = args.concurrent
+        if args.clear_existing:
+            config.CLEAR_EXISTING = True
+
+        artifacts_dir = Path(args.artifacts_dir) if args.artifacts_dir else Path(config.ARTIFACTS_DIR)
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        config.ARTIFACTS_DIR = str(artifacts_dir)
+        config.SUMMARY_FILE = _resolve_artifact_path(
+            args.summary_file,
+            artifacts_dir,
+            f"{SCRIPT_STEM}_summary.json"
+        )
+        config.CHECKPOINT_FILE = _resolve_artifact_path(
+            args.checkpoint_file,
+            artifacts_dir,
+            f"{SCRIPT_STEM}_checkpoint.json"
+        )
+        config.STATUS_FILE = _resolve_artifact_path(
+            args.status_file,
+            artifacts_dir,
+            f"{SCRIPT_STEM}_status.json"
+        )
+        config.FAILED_URLS_FILE = _resolve_artifact_path(
+            args.failed_urls_file,
+            artifacts_dir,
+            f"{SCRIPT_STEM}_failed_urls.json"
+        )
+
+        if args.no_resume:
+            config.RESUME_FROM_CHECKPOINT = False
+
+        if args.reset_checkpoint and os.path.exists(config.CHECKPOINT_FILE):
+            os.remove(config.CHECKPOINT_FILE)
+            logging.info(f"Reset checkpoint file: {config.CHECKPOINT_FILE}")
             
         return config
     
@@ -202,10 +278,19 @@ class Config:
                 
             except Exception as e:
                 logging.error(f"Error reading Excel file: {e}")
-                sys.exit(1)
+                logging.warning("Fallback to date range mode")
         else:
-            logging.error(f"Excel file {self.EXCEL_FILE} not found")
+            logging.warning(f"Excel file {self.EXCEL_FILE} not found, fallback to date range mode")
+
+        # Fallback: use full date range if Excel file is missing/invalid.
+        delta_days = (end_date - start_date).days
+        if delta_days < 0:
+            logging.error("End date is earlier than start date")
             sys.exit(1)
+
+        date_list = [start_date + datetime.timedelta(days=i) for i in range(delta_days + 1)]
+        logging.info(f"Fallback date mode active, generated {len(date_list)} dates")
+        return date_list
 
 class NewsSpider:
     def __init__(self, config: Config):
@@ -213,7 +298,19 @@ class NewsSpider:
         self.db = self._init_mongo()
         self.session = None
         self.failed_urls = []
+        self.failed_url_records = []
+        self.indexed_collections = set()
         self.semaphore = asyncio.Semaphore(config.CONCURRENT_REQUESTS)
+        self.request_metrics = {
+            'fetch_attempted': 0,
+            'fetch_success': 0,
+            'http_non_200': 0,
+            'timeout': 0,
+            'request_error': 0,
+            'parse_no_chinese': 0,
+            'failed_urls_logged': 0
+        }
+        self.failed_reason_counter = Counter()
 
     def _init_mongo(self) -> MongoClient:
         """Initialize MongoDB connection"""
@@ -222,7 +319,13 @@ class NewsSpider:
 
     async def _init_session(self):
         if not self.session:
-            self.session = aiohttp.ClientSession(headers=self.config.HEADERS)
+            timeout = aiohttp.ClientTimeout(total=self.config.HTTP_TIMEOUT)
+            connector = aiohttp.TCPConnector(limit=self.config.CONCURRENT_REQUESTS * 2)
+            self.session = aiohttp.ClientSession(
+                headers=self.config.HEADERS,
+                timeout=timeout,
+                connector=connector
+            )
 
     def _detect_and_decode(self, content: bytes) -> str:
         """Smartly detect and decode content"""
@@ -258,7 +361,7 @@ class NewsSpider:
             async with self.semaphore:
                 for attempt in range(self.config.MAX_RETRIES_PER_URL):
                     try:
-                        async with self.session.get(url, timeout=30) as response:
+                        async with self.session.get(url) as response:
                             if response.status != 200:
                                 if attempt == self.config.MAX_RETRIES_PER_URL - 1:
                                     logging.warning(f"Failed to fetch URL: {url}, status code: {response.status}")
@@ -366,8 +469,10 @@ class NewsSpider:
         try:
             for attempt in range(self.config.MAX_RETRIES_PER_URL):
                 try:
-                    async with self.session.get(url, timeout=30) as response:
+                    self.request_metrics['fetch_attempted'] += 1
+                    async with self.session.get(url) as response:
                         if response.status != 200:
+                            self.request_metrics['http_non_200'] += 1
                             if attempt == self.config.MAX_RETRIES_PER_URL - 1:
                                 self._log_failed_url(url, date_str, 
                                                 'am' if 'am' in url else 'pm', 
@@ -397,6 +502,7 @@ class NewsSpider:
                         
                         # Verify decoded text
                         if not re.search('[\u4e00-\u9fff]', text):
+                            self.request_metrics['parse_no_chinese'] += 1
                             if attempt == self.config.MAX_RETRIES_PER_URL - 1:
                                 logging.warning(f"Decoded text does not contain Chinese characters: {url}")
                                 self._log_failed_url(url, date_str, 
@@ -426,16 +532,19 @@ class NewsSpider:
                                     if len(valid_news) < len(block_news):
                                         logging.warning(f"Found {len(block_news) - len(valid_news)} invalid titles")
 
+                        self.request_metrics['fetch_success'] += 1
                         await asyncio.sleep(random.uniform(1, 3))
                         return news_data
                 
                 except asyncio.TimeoutError:
+                    self.request_metrics['timeout'] += 1
                     if attempt == self.config.MAX_RETRIES_PER_URL - 1:
                         self._log_failed_url(url, date_str, 
                                         'am' if 'am' in url else 'pm', 
                                         "Timeout")
                     await asyncio.sleep(1)
                 except Exception as e:
+                    self.request_metrics['request_error'] += 1
                     if attempt == self.config.MAX_RETRIES_PER_URL - 1:
                         logging.error(f"Failed to get URL {url}: {str(e)}")
                         self._log_failed_url(url, date_str, 
@@ -491,7 +600,7 @@ class NewsSpider:
         return news_data
 
     def _log_failed_url(self, url: str, date: str, period: str, reason: str):
-        """Record failed URL to JSON file"""
+        """Record failed URL in memory and flush once at shutdown"""
         failed_data = {
             "url": url,
             "date": date,
@@ -499,40 +608,51 @@ class NewsSpider:
             "reason": reason,
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
+        self.failed_url_records.append(failed_data)
+        self.request_metrics['failed_urls_logged'] += 1
+        self.failed_reason_counter[reason] += 1
+        logging.info(f"Recorded failed URL: {url} ({date} {period})")
 
-        # Read existing failed records
+    def flush_failed_urls_file(self):
+        """Persist failed URL records to JSON file once, minimizing blocking file I/O."""
+        if not self.failed_url_records:
+            return
+
         try:
             if Path(self.config.FAILED_URLS_FILE).exists():
                 with open(self.config.FAILED_URLS_FILE, 'r', encoding='utf-8') as f:
-                    failed_urls = json.load(f)
+                    existing = json.load(f)
             else:
-                failed_urls = []
+                existing = []
         except json.JSONDecodeError:
-            failed_urls = []
+            existing = []
 
-        # Add new failed record
-        failed_urls.append(failed_data)
-
-        # Save updated records
+        existing.extend(self.failed_url_records)
         with open(self.config.FAILED_URLS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(failed_urls, f, ensure_ascii=False, indent=2)
+            json.dump(existing, f, ensure_ascii=False, indent=2)
 
-        logging.info(f"Recorded failed URL: {url} ({date} {period})")
+        logging.info(f"Persisted {len(self.failed_url_records)} failed URL records")
 
     async def process_date(self, date: datetime.date) -> List[Dict]:
         date_str = date.strftime("%Y%m%d")
-        tasks = []
-        
-        for period in ["am", "pm"]:
-            url = self.config.BASE_URL.format(YYYYMMDD=date_str, AMPM=period)
-            for _ in range(self.config.MAX_RETRIES_PER_URL):
-                news_data = await self.fetch_news(url, date_str)
-                if news_data:
-                    tasks.extend(news_data)
-                    break
-                await asyncio.sleep(random.uniform(1, 3))
-        
-        return tasks
+        urls = [
+            self.config.BASE_URL.format(YYYYMMDD=date_str, AMPM=period)
+            for period in ["am", "pm"]
+        ]
+        responses = await asyncio.gather(
+            *(self.fetch_news(url, date_str) for url in urls),
+            return_exceptions=True
+        )
+
+        day_news = []
+        for response in responses:
+            if isinstance(response, Exception):
+                logging.error(f"Error while processing {date_str}: {response}")
+                continue
+            if response:
+                day_news.extend(response)
+
+        return day_news
 
     async def save_to_mongo(self, year: int, news_batch: List[Dict]):
         """Save news data to collection without suffix"""
@@ -541,9 +661,16 @@ class NewsSpider:
 
         # Use collection name without suffix
         collection = self.db[str(year)]  # For example: "2014" instead of "2014_1"
-        
-        # Get document count before saving
-        before_count = collection.count_documents({})
+
+        # Ensure efficient upsert key once per collection.
+        if year not in self.indexed_collections:
+            await asyncio.to_thread(
+                collection.create_index,
+                [('link', ASCENDING), ('news_date', ASCENDING)],
+                unique=True,
+                name='uniq_link_news_date'
+            )
+            self.indexed_collections.add(year)
         
         operations = [
             UpdateOne(
@@ -559,13 +686,11 @@ class NewsSpider:
                 operations,
                 ordered=False
             )
-            
-            # Get document count after saving
-            after_count = collection.count_documents({})
-            
-            # Calculate new and duplicate document counts
-            new_docs = after_count - before_count
+
+            # Calculate new and duplicate document counts from write result.
+            new_docs = result.upserted_count
             duplicate_docs = len(operations) - new_docs
+            after_count = collection.count_documents({})
             
             logging.info(f"Saved {len(operations)} news to {year} collection")
             logging.info(f"New documents: {new_docs} documents")
@@ -576,7 +701,8 @@ class NewsSpider:
             
         except Exception as e:
             logging.error(f"Failed to save to MongoDB: {e}")
-            return before_count, 0, 0
+            after_count = collection.count_documents({})
+            return after_count, 0, 0
 
 async def print_date_statistics(db: MongoClient):
     """Count documents for each date"""
@@ -628,15 +754,80 @@ async def clear_collections(db: MongoClient, start_year: int, end_year: int):
             logging.info(f"{year} year collection does not exist, no need to clear")
     logging.info("Collection clear completed\n")
 
+
+def load_checkpoint(path: str) -> Optional[Dict]:
+    if not os.path.exists(path):
+        return None
+
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logging.warning(f"Failed to load checkpoint file {path}: {e}")
+        return None
+
+
+def save_checkpoint(path: str, data: Dict):
+    tmp_path = f"{path}.tmp"
+    with open(tmp_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, path)
+
+
+def _format_elapsed(seconds: float) -> str:
+    sec = max(0, int(seconds))
+    h = sec // 3600
+    m = (sec % 3600) // 60
+    s = sec % 60
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
+def save_status(path: str, data: Dict):
+    tmp_path = f"{path}.tmp"
+    with open(tmp_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, path)
+
 async def main():
     # Create configuration from command line arguments
     config = Config.from_args()
+    run_started_at = datetime.datetime.now()
+    run_id = run_started_at.strftime('%Y%m%d_%H%M%S')
     
     # Get list of dates to crawl
-    date_list = config.get_date_list()
+    original_date_list = config.get_date_list()
+    date_list = list(original_date_list)
+    total_dates_planned = len(original_date_list)
+
+    checkpoint = load_checkpoint(config.CHECKPOINT_FILE) if config.RESUME_FROM_CHECKPOINT else None
+    resumed_from_checkpoint = False
+    resumed_last_completed = None
+    completed_before_run = 0
+
+    if checkpoint:
+        same_job = (
+            checkpoint.get('db_name') == config.DB_NAME
+            and checkpoint.get('start_date') == config.START_DATE
+            and checkpoint.get('end_date') == config.END_DATE
+        )
+        last_completed = checkpoint.get('last_completed_date')
+
+        if same_job and last_completed:
+            try:
+                last_completed_date = datetime.datetime.strptime(last_completed, "%Y-%m-%d").date()
+                date_list = [d for d in original_date_list if d > last_completed_date]
+                resumed_from_checkpoint = True
+                resumed_last_completed = last_completed
+                completed_before_run = total_dates_planned - len(date_list)
+                logging.info(
+                    f"Resume from checkpoint enabled, last completed date: {last_completed}, "
+                    f"remaining dates: {len(date_list)}/{total_dates_planned}"
+                )
+            except ValueError:
+                logging.warning("Checkpoint last_completed_date is invalid, start from beginning")
     
     if not date_list:
-        logging.error("No dates found to crawl")
+        logging.info("No remaining dates to crawl. The range is already completed.")
         return
     
     # Initialize crawler
@@ -645,10 +836,13 @@ async def main():
     
     try:
         # Get all years in date range
-        years = set(date.year for date in date_list)
+        years = set(date.year for date in original_date_list)
         
-        # Clear related collections
-        await clear_collections(spider.db, min(years), max(years))
+        # Clear related collections only when explicitly requested.
+        if config.CLEAR_EXISTING:
+            await clear_collections(spider.db, min(years), max(years))
+        else:
+            logging.info("Skip collection clearing (safe mode). Use --clear-existing to enable destructive cleanup.")
         
         news_batch = []
         current_year = None
@@ -656,50 +850,159 @@ async def main():
         # Add document counter
         total_documents = 0
         processed_dates = 0
+        total_new_docs = 0
+        total_duplicate_docs = 0
+
+        checkpoint_data = {
+            'run_id': run_id,
+            'status': 'in_progress',
+            'db_name': config.DB_NAME,
+            'start_date': config.START_DATE,
+            'end_date': config.END_DATE,
+            'summary_file': config.SUMMARY_FILE,
+            'checkpoint_file': config.CHECKPOINT_FILE,
+            'last_completed_date': resumed_last_completed,
+            'processed_dates': 0,
+            'total_dates': total_dates_planned,
+            'updated_at': datetime.datetime.now().isoformat()
+        }
+        save_checkpoint(config.CHECKPOINT_FILE, checkpoint_data)
+
+        status_data = {
+            'run_id': run_id,
+            'status': 'running',
+            'pid': os.getpid(),
+            'db_name': config.DB_NAME,
+            'start_date': config.START_DATE,
+            'end_date': config.END_DATE,
+            'current_processing_date': None,
+            'last_completed_date': resumed_last_completed,
+            'processed_dates': completed_before_run,
+            'total_dates': total_dates_planned,
+            'remaining_dates': total_dates_planned - completed_before_run,
+            'progress_percent': round((completed_before_run / total_dates_planned) * 100, 2) if total_dates_planned else 0,
+            'progress_text': f"{completed_before_run}/{total_dates_planned}",
+            'elapsed': '00:00:00',
+            'speed_dates_per_min': 0,
+            'updated_at': datetime.datetime.now().isoformat(),
+            'files': {
+                'checkpoint_file': config.CHECKPOINT_FILE,
+                'summary_file': config.SUMMARY_FILE,
+                'failed_urls_file': config.FAILED_URLS_FILE
+            },
+            'last_error': None
+        }
+        save_status(config.STATUS_FILE, status_data)
         
-        # Iterate through date list
-        for current_date in date_list:
-            # Show progress
-            processed_dates += 1
-            logging.info(f"Processing date {current_date} ({processed_dates}/{len(date_list)})")
-            
-            # If year changes, save previous batch
-            if current_year and current_year != current_date.year and news_batch:
-                doc_count, new_docs, duplicate_docs = await spider.save_to_mongo(current_year, news_batch)
-                total_documents = doc_count
-                logging.info(f"Year changed, current database has {total_documents} documents")
-                news_batch = []
-            
-            current_year = current_date.year
-            date_news = await spider.process_date(current_date)
-            
-            if date_news:
-                news_batch.extend(date_news)
-                logging.info(f"Got {len(date_news)} news from {current_date}")
-            else:
-                logging.warning(f"No news got from {current_date}")
-            
-            # If batch reaches specified size, save to database
-            if len(news_batch) >= config.BATCH_SIZE:
-                doc_count, new_docs, duplicate_docs = await spider.save_to_mongo(current_year, news_batch)
-                total_documents = doc_count
-                logging.info(f"Batch saved, current database has {total_documents} documents")
-                news_batch = []
-            
-            # Show progress
-            logging.info(f"---------------------Completed processing date: {current_date}---------------------")
+        # Iterate through date list with tqdm progress bar
+        with tqdm(total=len(date_list), desc='Processing dates', unit='date') as date_bar:
+            for current_date in date_list:
+                # Show progress
+                processed_dates += 1
+                absolute_processed = completed_before_run + processed_dates
+                logging.info(f"Processing date {current_date} ({absolute_processed}/{total_dates_planned})")
+                date_bar.update(1)
+
+                # If year changes, save previous batch
+                if current_year and current_year != current_date.year and news_batch:
+                    doc_count, new_docs, duplicate_docs = await spider.save_to_mongo(current_year, news_batch)
+                    total_documents = doc_count
+                    total_new_docs += new_docs
+                    total_duplicate_docs += duplicate_docs
+                    logging.info(f"Year changed, current database has {total_documents} documents")
+                    news_batch = []
+
+                current_year = current_date.year
+                date_news = await spider.process_date(current_date)
+
+                if date_news:
+                    news_batch.extend(date_news)
+                    logging.info(f"Got {len(date_news)} news from {current_date}")
+                else:
+                    logging.warning(f"No news got from {current_date}")
+
+                # If batch reaches specified size, save to database
+                if len(news_batch) >= config.BATCH_SIZE:
+                    doc_count, new_docs, duplicate_docs = await spider.save_to_mongo(current_year, news_batch)
+                    total_documents = doc_count
+                    total_new_docs += new_docs
+                    total_duplicate_docs += duplicate_docs
+                    logging.info(f"Batch saved, current database has {total_documents} documents")
+                    news_batch = []
+
+                # Show progress
+                logging.info(f"---------------------Completed processing date: {current_date}---------------------")
+
+                now = datetime.datetime.now()
+                elapsed_seconds = (now - run_started_at).total_seconds()
+                speed_dates_per_min = round((absolute_processed / (elapsed_seconds / 60)), 2) if elapsed_seconds > 0 else 0
+                progress_percent = round((absolute_processed / total_dates_planned) * 100, 2) if total_dates_planned else 0
+
+                checkpoint_data['last_completed_date'] = current_date.strftime('%Y-%m-%d')
+                checkpoint_data['processed_dates'] = absolute_processed
+                checkpoint_data['updated_at'] = now.isoformat()
+                save_checkpoint(config.CHECKPOINT_FILE, checkpoint_data)
+
+                status_data.update({
+                    'status': 'running',
+                    'current_processing_date': current_date.strftime('%Y-%m-%d'),
+                    'last_completed_date': current_date.strftime('%Y-%m-%d'),
+                    'processed_dates': absolute_processed,
+                    'remaining_dates': total_dates_planned - absolute_processed,
+                    'progress_percent': progress_percent,
+                    'progress_text': f"{absolute_processed}/{total_dates_planned}",
+                    'elapsed': _format_elapsed(elapsed_seconds),
+                    'speed_dates_per_min': speed_dates_per_min,
+                    'updated_at': now.isoformat(),
+                    'last_error': None
+                })
+                save_status(config.STATUS_FILE, status_data)
             
         # Save last batch data
         if news_batch:
             doc_count, new_docs, duplicate_docs = await spider.save_to_mongo(current_year, news_batch)
             total_documents = doc_count
+            total_new_docs += new_docs
+            total_duplicate_docs += duplicate_docs
             logging.info(f"Final saved, database has {total_documents} documents")
+
+        checkpoint_data['status'] = 'completed'
+        checkpoint_data['processed_dates'] = total_dates_planned
+        checkpoint_data['updated_at'] = datetime.datetime.now().isoformat()
+        save_checkpoint(config.CHECKPOINT_FILE, checkpoint_data)
+
+        status_data.update({
+            'status': 'completed',
+            'current_processing_date': None,
+            'last_completed_date': checkpoint_data.get('last_completed_date'),
+            'processed_dates': total_dates_planned,
+            'remaining_dates': 0,
+            'progress_percent': 100,
+            'progress_text': f"{total_dates_planned}/{total_dates_planned}",
+            'elapsed': _format_elapsed((datetime.datetime.now() - run_started_at).total_seconds()),
+            'updated_at': datetime.datetime.now().isoformat(),
+            'last_error': None
+        })
+        save_status(config.STATUS_FILE, status_data)
             
     except Exception as e:
         logging.error(f"Error occurred during processing: {e}")
+        checkpoint_data['status'] = 'failed'
+        checkpoint_data['updated_at'] = datetime.datetime.now().isoformat()
+        save_checkpoint(config.CHECKPOINT_FILE, checkpoint_data)
+
+        status_data.update({
+            'status': 'failed',
+            'updated_at': datetime.datetime.now().isoformat(),
+            'last_error': str(e),
+            'elapsed': _format_elapsed((datetime.datetime.now() - run_started_at).total_seconds())
+        })
+        save_status(config.STATUS_FILE, status_data)
     finally:
         if spider.session:
             await spider.session.close()
+
+        spider.flush_failed_urls_file()
         
         # Save failed URL records
         if spider.failed_urls:
@@ -715,6 +1018,45 @@ async def main():
         
         # Output date statistics
         await print_date_statistics(spider.db)
+
+        run_finished_at = datetime.datetime.now()
+        elapsed_seconds = (run_finished_at - run_started_at).total_seconds()
+        summary = {
+            'run_id': run_id,
+            'run_started_at': run_started_at.isoformat(),
+            'run_finished_at': run_finished_at.isoformat(),
+            'elapsed_seconds': elapsed_seconds,
+            'config': {
+                'db_name': config.DB_NAME,
+                'start_date': config.START_DATE,
+                'end_date': config.END_DATE,
+                'batch_size': config.BATCH_SIZE,
+                'concurrent_requests': config.CONCURRENT_REQUESTS,
+                'clear_existing': config.CLEAR_EXISTING,
+                'checkpoint_file': config.CHECKPOINT_FILE,
+                'status_file': config.STATUS_FILE,
+                'resume_from_checkpoint': config.RESUME_FROM_CHECKPOINT,
+                'resumed_from_checkpoint': resumed_from_checkpoint,
+                'excel_file': config.EXCEL_FILE,
+                'date_column': config.DATE_COLUMN
+            },
+            'dates': {
+                'total_dates': total_dates_planned,
+                'processed_dates': processed_dates,
+                'remaining_dates': len(date_list) - processed_dates
+            },
+            'documents': {
+                'total_new_documents': total_new_docs,
+                'total_duplicate_documents': total_duplicate_docs
+            },
+            'requests': spider.request_metrics,
+            'failed_url_records': len(spider.failed_url_records),
+            'failed_reasons': dict(spider.failed_reason_counter)
+        }
+
+        with open(config.SUMMARY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(summary, f, ensure_ascii=False, indent=2)
+        logging.info(f"Wrote structured run summary to {config.SUMMARY_FILE}")
 
 if __name__ == "__main__":
     asyncio.run(main())
