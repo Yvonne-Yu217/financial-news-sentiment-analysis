@@ -9,13 +9,14 @@
 - Textneg_it 是第i篇新闻在t日的负面情绪概率
 - W_i 是该新闻的质量分数(quality_score)，如果不存在则使用1.0
 
-The text sentiment analysis model uses the pre-trained Chinese BERT model IDEA-CCNL/Erlangshen-Roberta-110M-Sentiment from Hugging Face. This model is a fine-tuned version of the Chinese RoBERTa-wwm-ext-base model on several sentiment analysis datasets.
+The text sentiment analysis model uses the pre-trained Chinese BERT model IDEA-CCNL/Erlangshen-Roberta-110M-Sentiment from Hugging Face.
 """
 
 import os
 import sys
 import logging
 import argparse
+import hashlib
 import torch
 import numpy as np
 import pandas as pd
@@ -26,7 +27,6 @@ from transformers import BertTokenizer, BertForSequenceClassification
 from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
 import seaborn as sns
-from pathlib import Path
 
 # 配置日志
 logging.basicConfig(
@@ -39,9 +39,10 @@ logging.basicConfig(
 )
 
 # 全局配置
-BATCH_SIZE = 8  # 批处理大小，适应M1内存
-MAX_LENGTH = 512  # 最大文本长度
-# 检测是否为M1 Mac并设置设备
+BATCH_SIZE = 8
+MAX_LENGTH = 512
+DEFAULT_YEARS = list(range(2014, 2027))
+
 is_mps_available = hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
 DEVICE = torch.device("mps" if is_mps_available else "cpu")
 
@@ -89,6 +90,18 @@ def connect_to_mongodb():
         logging.error(f"连接MongoDB失败: {e}")
         sys.exit(1)
 
+
+def connect_to_mongodb_with_config(mongo_uri: str, db_name: str):
+    try:
+        client = MongoClient(mongo_uri)
+        client.admin.command("ping")
+        db = client[db_name]
+        logging.info("成功连接到MongoDB: %s / %s", mongo_uri, db_name)
+        return db
+    except Exception as e:
+        logging.error(f"连接MongoDB失败: {e}")
+        sys.exit(1)
+
 def load_model_and_tokenizer():
     """加载预训练模型和分词器"""
     logging.info(f"加载模型: {MODEL_NAME}，使用设备: {DEVICE}")
@@ -121,22 +134,46 @@ def predict_sentiment(model, tokenizer, texts, num_labels):
     
     return np.array(predictions)
 
-def fetch_news_by_date(collection, news_date):
-    """从数据库获取指定日期的新闻"""
-    # 只获取 has_valid_images 为 true 的记录
+def fetch_news_by_date(collection, quality_mapping, news_date):
+    """从year_filtered读取指定日期文本，并拼接year_2质量权重。"""
     cursor = collection.find({'news_date': news_date, 'has_valid_images': True})
-    news_list = list(cursor)
+    news_list = []
     texts = []
-    news_ids = []
-    
-    for news in news_list:
-        # 确保有内容字段
-        if 'content' in news and news['content']:
-            content = news['content'][:MAX_LENGTH * 4]
-            texts.append(content)
-            news_ids.append(news['_id'])
-    
-    return texts, news_ids, news_list
+
+    for news in cursor:
+        content = (news.get('content') or '').strip()
+        if not content:
+            continue
+
+        original_id = news.get('original_id')
+        q_doc = quality_mapping.get(original_id, {})
+        quality_score = float(q_doc.get('avg_quality_score', 1.0) or 1.0)
+
+        enriched = {
+            'original_id': original_id,
+            'news_date': news_date,
+            'title': news.get('title', ''),
+            'content': content[:MAX_LENGTH * 4],
+            'quality_score': quality_score,
+        }
+        news_list.append(enriched)
+        texts.append(enriched['content'])
+
+    return texts, news_list
+
+
+def build_quality_mapping(db, year):
+    quality_collection_name = f"{year}_2"
+    if quality_collection_name not in db.list_collection_names():
+        return {}
+
+    mapping = {}
+    quality_collection = db[quality_collection_name]
+    for doc in quality_collection.find({}, {'original_id': 1, 'avg_quality_score': 1}):
+        original_id = doc.get('original_id')
+        if original_id:
+            mapping[original_id] = {'avg_quality_score': float(doc.get('avg_quality_score', 1.0) or 1.0)}
+    return mapping
 
 def calculate_daily_textpes(db, years, output_file=None, text_collection_suffix='_filtered'):
     """
@@ -164,7 +201,7 @@ def calculate_daily_textpes(db, years, output_file=None, text_collection_suffix=
         
         # 获取相关集合
         text_collection_name = f"{year}{text_collection_suffix}"
-        news_sentiment_collection_name = f"{year}_news_sentiment"
+        text_sentiment_collection_name = f"{year}_text_sentiment"
         collections = db.list_collection_names()
         
         # 检查集合是否存在
@@ -172,9 +209,10 @@ def calculate_daily_textpes(db, years, output_file=None, text_collection_suffix=
             logging.warning(f"{text_collection_name} 集合不存在，跳过处理")
             continue
         
-        # 获取文本情感集合（不删除已有集合，而是更新）
+        # 独立保存文本情感结果，避免与脚本9写入的 year_news_sentiment 冲突
         text_collection = db[text_collection_name]
-        news_sentiment_collection = db[news_sentiment_collection_name]
+        text_sentiment_collection = db[text_sentiment_collection_name]
+        quality_mapping = build_quality_mapping(db, year)
         
         # 获取不同的日期
         date_cursor = text_collection.distinct('news_date', {'has_valid_images': True})
@@ -187,12 +225,9 @@ def calculate_daily_textpes(db, years, output_file=None, text_collection_suffix=
         
         logging.info(f"开始处理 {year} 年的 {total_days} 个日期")
         
-        # 用于存储每日的加权指标
-        daily_results = {}
-        
         progress_bar = tqdm(date_list, desc=f"{year}年进度")
         for news_date in progress_bar:
-            texts, news_ids, news_list = fetch_news_by_date(text_collection, news_date)
+            texts, news_list = fetch_news_by_date(text_collection, quality_mapping, news_date)
             
             if not texts:
                 continue
@@ -211,45 +246,40 @@ def calculate_daily_textpes(db, years, output_file=None, text_collection_suffix=
             daily_textneg_likelihoods = [float(pred[0]) for pred in predictions]
             textpes_likelihood = np.mean(daily_textneg_likelihoods) if daily_textneg_likelihoods else 0.0
             
-            # 获取或创建质量分数
             text_qualities = []
             sum_weighted_negative = 0.0
             sum_weights = 0.0
             
             # 处理每篇新闻
-            for i, news_id in enumerate(news_ids):
-                # 获取情感分析结果
+            for i, news in enumerate(news_list):
                 sentiment_class = int(predicted_classes[i])
                 sentiment_probs = predictions[i].tolist()
                 sentiment_label = SENTIMENT_LABELS[sentiment_class]
                 textneg_likelihood = float(sentiment_probs[0])
-                
-                # 获取质量分数（如果可用）
-                news = news_list[i]
-                quality_score = 1.0  # 默认质量分数
-                
-                if 'avg_quality_score' in news:
-                    quality_score = news['avg_quality_score']
+                quality_score = float(news.get('quality_score', 1.0) or 1.0)
                 
                 # 计算加权分数
                 text_qualities.append(quality_score)
                 sum_weighted_negative += textneg_likelihood * quality_score
                 sum_weights += quality_score
                 
-                # 保存到文本情感集合
+                record_key = hashlib.md5(
+                    f"{news.get('original_id')}::{news.get('news_date')}::{news.get('title')}".encode('utf-8')
+                ).hexdigest()
                 text_sentiment_record = {
+                    'record_key': record_key,
                     'original_id': news.get('original_id'),
                     'news_date': news_date,
                     'title': news.get('title', ''),
                     'sentiment_class': sentiment_class,
                     'sentiment_label': sentiment_label,
                     'textneg_likelihood': textneg_likelihood,
+                    'quality_score': quality_score,
                     'processed_time': datetime.now()
                 }
                 
-                # 检查是否已存在该记录，如果存在则更新，否则插入
-                news_sentiment_collection.update_one(
-                    {'original_id': news.get('original_id'), 'title': news.get('title', '')},
+                text_sentiment_collection.update_one(
+                    {'record_key': record_key},
                     {'$set': text_sentiment_record},
                     upsert=True
                 )
@@ -258,7 +288,6 @@ def calculate_daily_textpes(db, years, output_file=None, text_collection_suffix=
             weighted_textpes = sum_weighted_negative / sum_weights if sum_weights > 0 else textpes_likelihood
             avg_quality_score = np.mean(text_qualities) if text_qualities else 1.0
             
-            # 添加到日期结果中
             daily_result = {
                 'news_date': news_date,
                 'total_count': total_count,
@@ -273,10 +302,9 @@ def calculate_daily_textpes(db, years, output_file=None, text_collection_suffix=
             
             all_results.append(daily_result)
             
-            # 更新进度条描述
             progress_bar.set_description(f"{year}年: 处理 {news_date} ({total_count}篇新闻)")
         
-        logging.info(f"{year} 年共处理了 {len(all_results) - len(daily_results)} 天的数据")
+        logging.info(f"{year} 年处理完成，已写入 {text_sentiment_collection_name}")
     
     # 转换为DataFrame
     if not all_results:
@@ -530,7 +558,7 @@ def fix_sentiment_class_label_inversion(db, years):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="计算每日加权TextPes指标")
-    parser.add_argument("--years", nargs="+", type=int, default=list(range(2014, 2025)),
+    parser.add_argument("--years", nargs="+", type=int, default=DEFAULT_YEARS,
                         help="要处理的年份列表")
     parser.add_argument("--output", type=str, default="results/weighted_textpes.csv",
                         help="输出文件路径")
@@ -544,17 +572,17 @@ def main():
                         help="要更新的Excel文件路径")
     parser.add_argument("--collection-suffix", type=str, default="_filtered",
                         help="文本集合后缀，默认为'_filtered'")
+    parser.add_argument("--mongo-uri", type=str, default="mongodb://localhost:27017/",
+                        help="MongoDB URI")
+    parser.add_argument("--db-name", type=str, default="sina_news_dataset_test",
+                        help="MongoDB数据库名")
     
     args = parser.parse_args()
     
-    # 连接数据库
-    db = connect_to_mongodb()
+    db = connect_to_mongodb_with_config(args.mongo_uri, args.db_name)
     
     # 计算每日加权TextPes指标
     df = calculate_daily_textpes(db, args.years, args.output, args.collection_suffix)
-    
-    # 修正 sentiment_class 和 sentiment_label 的对应关系
-    fix_sentiment_class_label_inversion(db, args.years)
     
     # 绘制图表
     if args.plot and df is not None:

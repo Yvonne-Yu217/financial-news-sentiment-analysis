@@ -1,63 +1,40 @@
+import argparse
+import datetime
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import transforms
 from PIL import Image
-from pymongo import MongoClient
-import os
-import logging
-from pathlib import Path
-import datetime
-import re
+from bson import ObjectId
+from pymongo import MongoClient, UpdateOne
+from torchvision import transforms
 from tqdm import tqdm
-import timm
-import sys
-import glob
-import numpy as np
 
-# 配置日志
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-# 从环境变量读取年份配置
-years_env = os.environ.get('YEARS_TO_PROCESS')
-if years_env:
-    years_to_process = [int(y) for y in years_env.split(',')]
-    logging.info(f"从环境变量读取年份配置: {years_to_process}")
-else:   
-    years_to_process = list(range(2014, 2025))  # 默认处理2014-2024年
-    logging.info(f"使用默认年份配置: {years_to_process}")
+SCRIPT_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS_DIR = SCRIPT_DIR / "run_artifacts" / "8vit_transferlearning"
+DEFAULT_CHECKPOINT_FILE = SCRIPT_DIR / "run_artifacts" / "9sentiment_analyzer" / "sentiment_checkpoint.json"
 
-# 删除所有._开头的隐藏文件
-def remove_all_hidden_files():
-    """删除所有._开头的隐藏文件"""
-    count = 0
-    for root, dirs, files in os.walk('images'):
-        for file in files:
-            if file.startswith('._'):
-                file_path = os.path.join(root, file)
-                try:
-                    os.remove(file_path)
-                    count += 1
-                except Exception as e:
-                    logging.error(f"删除隐藏文件失败 {file_path}: {e}")
-    
-    if count > 0:
-        logging.info(f"已删除 {count} 个._开头的隐藏文件")
 
-# 改进的ViT模型
 class ImprovedViTModel(nn.Module):
-    def __init__(self, num_classes=2, dropout_rate=0.2):
+    """Model definition aligned with script 8 (`8vit_transferlearning.py`)."""
+
+    def __init__(self, model_name: str = "vit_base_patch16_224", num_classes: int = 2, dropout_rate: float = 0.2):
         super().__init__()
-        # 使用预训练的ViT模型
-        self.backbone = timm.create_model('vit_base_patch16_224.augreg2_in21k_ft_in1k', pretrained=True)
-        
-        # 获取特征维度
+        self.backbone = timm.create_model(model_name, pretrained=False)
         in_features = self.backbone.head.in_features
-        
-        # 替换分类头为更复杂的结构
         self.backbone.head = nn.Sequential(
             nn.Linear(in_features, 512),
             nn.LayerNorm(512),
@@ -67,433 +44,521 @@ class ImprovedViTModel(nn.Module):
             nn.LayerNorm(256),
             nn.GELU(),
             nn.Dropout(dropout_rate),
-            nn.Linear(256, num_classes)
+            nn.Linear(256, num_classes),
         )
-        
+
     def forward(self, x):
         return self.backbone(x)
 
-def check_environment():
-    """检查运行环境"""
-    logging.info("\n=== 环境检查 ===")
-    logging.info(f"PyTorch 版本: {torch.__version__}")
-    logging.info(f"CUDA 可用: {torch.cuda.is_available()}")
-    if hasattr(torch.backends, 'mps'):
-        logging.info(f"MPS 可用: {torch.backends.mps.is_available()}")
-    
-    # 检查必要目录
-    required_dirs = ['images']
-    for d in required_dirs:
-        if os.path.exists(d):
-            logging.info(f"目录存在: {d}")
-        else:
-            logging.info(f"目录不存在: {d}")
-    logging.info("=== 检查完成 ===\n")
 
-def load_model(model_path):
-    """加载训练好的模型"""
-    try:
-        # 选择合适的设备
-        if torch.cuda.is_available():
-            device = torch.device("cuda")
-            logging.info("使用 CUDA 设备")
-        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-            device = torch.device("mps")
-            logging.info("使用 MPS 设备")
-        else:
-            device = torch.device("cpu")
-            logging.info("使用 CPU 设备")
-        
-        # 创建模型实例
-        model = ImprovedViTModel()
-        
-        # 加载模型权重
-        state_dict = torch.load(model_path, map_location=device)
-        model.load_state_dict(state_dict)
-        model = model.to(device)
-        model.eval()
-        
-        logging.info(f"模型 {model_path} 加载成功")
-        return model, device
-        
-    except Exception as e:
-        logging.error(f"模型加载失败: {e}")
-        raise
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Script 9: image sentiment inference and MongoDB write-back")
+    parser.add_argument("--start-year", type=int, default=2014)
+    parser.add_argument("--end-year", type=int, default=2026)
+    parser.add_argument("--years", nargs="+", type=int, default=None, help="Optional explicit year list")
 
-def classify_image(model, image_path, device):
-    """对单张图片进行分类"""
+    parser.add_argument("--mongo-uri", default="mongodb://localhost:27017/")
+    parser.add_argument("--db-name", default="sina_news_dataset_test")
+
+    parser.add_argument("--model", default="", help="Optional explicit model path")
+    parser.add_argument("--model-name", default="vit_base_patch16_224", help="timm backbone name")
+    parser.add_argument("--dropout-rate", type=float, default=0.2)
+    parser.add_argument("--artifacts-dir", default=str(DEFAULT_ARTIFACTS_DIR))
+
+    parser.add_argument("--batch-write-size", type=int, default=500)
+    parser.add_argument("--max-news-per-year", type=int, default=0, help="For smoke test/debug only")
+    parser.add_argument("--keep-existing", action="store_true", help="Do not drop year sentiment collections before writing")
+    parser.add_argument("--checkpoint-file", default=str(DEFAULT_CHECKPOINT_FILE), help="Checkpoint json path")
+    parser.add_argument("--checkpoint-every", type=int, default=20, help="Save checkpoint every N processed docs")
+    parser.add_argument("--no-resume", action="store_true", help="Disable checkpoint resume")
+    parser.add_argument("--reset-checkpoint", action="store_true", help="Delete checkpoint file before run")
+    parser.add_argument("--strict-model-only", action="store_true", default=True, help="Require strict-model artifacts metadata")
+    parser.add_argument("--no-strict-model-only", dest="strict_model_only", action="store_false")
+
+    return parser.parse_args()
+
+
+def load_checkpoint(path: Path) -> dict:
+    if not path.exists():
+        return {"years": {}}
     try:
-        # 图像预处理 - 与训练时完全相同
-        transform = transforms.Compose([
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return {"years": {}}
+        if "years" not in data or not isinstance(data["years"], dict):
+            data["years"] = {}
+        return data
+    except Exception:
+        return {"years": {}}
+
+
+def save_checkpoint(path: Path, checkpoint: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        json.dump(checkpoint, f, ensure_ascii=False, indent=2)
+    tmp.replace(path)
+
+
+def resolve_years(args: argparse.Namespace) -> List[int]:
+    if args.years:
+        return sorted(set(args.years))
+
+    years_env = os.environ.get("YEARS_TO_PROCESS", "").strip()
+    if years_env:
+        env_years = [int(y.strip()) for y in years_env.split(",") if y.strip()]
+        return sorted(set(env_years))
+
+    return list(range(args.start_year, args.end_year + 1))
+
+
+def resolve_model_path(args: argparse.Namespace) -> Path:
+    candidates: List[Path] = []
+
+    if args.model:
+        user_model = Path(args.model)
+        if not user_model.is_absolute():
+            user_model = Path.cwd() / user_model
+        candidates.append(user_model)
+
+    artifacts_dir = Path(args.artifacts_dir)
+    if not artifacts_dir.is_absolute():
+        artifacts_dir = Path.cwd() / artifacts_dir
+
+    candidates.extend(
+        [
+            artifacts_dir / "8vit_best_model.pth",
+            artifacts_dir / "8vit_final_model.pth",
+            Path.cwd() / "improved_vit_sentiment_model.pth",
+            SCRIPT_DIR / "improved_vit_sentiment_model.pth",
+        ]
+    )
+
+    for p in candidates:
+        if p.exists() and p.is_file():
+            logging.info("Using model: %s", p)
+            return p
+
+    checked = "\n".join(f"- {p}" for p in candidates)
+    raise FileNotFoundError(f"No usable model file found. Checked:\n{checked}")
+
+
+def validate_strict_model(args: argparse.Namespace, model_path: Path) -> None:
+    if not args.strict_model_only:
+        return
+
+    artifacts_dir = Path(args.artifacts_dir)
+    if not artifacts_dir.is_absolute():
+        artifacts_dir = Path.cwd() / artifacts_dir
+
+    summary_path = artifacts_dir / "8vit_transferlearning_summary.json"
+    if not summary_path.exists():
+        raise FileNotFoundError(f"Strict model validation failed: summary not found: {summary_path}")
+
+    with summary_path.open("r", encoding="utf-8") as f:
+        summary = json.load(f)
+
+    use_class_weights = summary.get("use_class_weights", None)
+    if use_class_weights is None:
+        use_class_weights = (summary.get("training") or {}).get("use_class_weights", None)
+    if use_class_weights is None:
+        use_class_weights = (summary.get("config") or {}).get("use_class_weights", None)
+
+    if use_class_weights is not False:
+        raise ValueError("Strict model validation failed: expected use_class_weights=false in summary")
+
+    expected_best = artifacts_dir / "8vit_best_model.pth"
+    expected_final = artifacts_dir / "8vit_final_model.pth"
+    if model_path not in (expected_best, expected_final):
+        raise ValueError(
+            "Strict model validation failed: model path is not from strict artifacts dir "
+            f"({artifacts_dir})"
+        )
+
+    logging.info("Strict model validated by summary: %s", summary_path)
+
+
+def detect_device() -> torch.device:
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+    logging.info("Using device: %s", device)
+    return device
+
+
+def load_model(model_path: Path, model_name: str, dropout_rate: float, device: torch.device) -> nn.Module:
+    model = ImprovedViTModel(model_name=model_name, dropout_rate=dropout_rate)
+    payload = torch.load(model_path, map_location=device)
+
+    # Support direct state_dict and wrapped checkpoints.
+    if isinstance(payload, dict) and "model_state_dict" in payload:
+        state_dict = payload["model_state_dict"]
+    elif isinstance(payload, dict) and "state_dict" in payload:
+        state_dict = payload["state_dict"]
+    else:
+        state_dict = payload
+
+    model.load_state_dict(state_dict, strict=True)
+    model = model.to(device)
+    model.eval()
+    logging.info("Model loaded successfully")
+    return model
+
+
+def connect_to_mongodb(mongo_uri: str, db_name: str):
+    client = MongoClient(mongo_uri)
+    client.admin.command("ping")
+    logging.info("MongoDB connected: %s / %s", mongo_uri, db_name)
+    return client[db_name]
+
+
+def remove_hidden_files_if_needed(images_root: Path) -> None:
+    if not images_root.exists():
+        return
+    count = 0
+    for hidden in images_root.rglob("._*"):
+        if hidden.is_file():
+            hidden.unlink()
+            count += 1
+    if count > 0:
+        logging.info("Removed %d hidden image files", count)
+
+
+def build_transform():
+    return transforms.Compose(
+        [
             transforms.Resize((256, 256)),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], 
-                               std=[0.229, 0.224, 0.225])
-        ])
-        
-        # 加载并转换图像
-        img = Image.open(image_path).convert('RGB')
-        img_tensor = transform(img).unsqueeze(0).to(device)
-        
-        # 模型推理
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+
+
+def classify_image(model: nn.Module, image_path: Path, device: torch.device, transform) -> Tuple[Optional[int], Optional[float]]:
+    try:
+        img = Image.open(image_path).convert("RGB")
+        tensor = transform(img).unsqueeze(0).to(device)
         with torch.no_grad():
-            outputs = model(img_tensor)
-            probabilities = F.softmax(outputs, dim=1)
-            probs = probabilities.cpu().numpy()[0]
-            _, predicted = torch.max(outputs, 1)
-            
-            # 返回预测类别和概率
-            # 注意：positive=0, negative=1
-            return predicted.item(), probs[1]  # 返回类别和负面概率
-            
-    except Exception as e:
-        logging.error(f"处理图片失败 {image_path}: {e}")
+            logits = model(tensor)
+            probs = F.softmax(logits, dim=1).detach().cpu().numpy()[0]
+            pred = int(np.argmax(probs))
+            return pred, float(probs[1])
+    except Exception as exc:
+        logging.error("Image inference failed: %s (%s)", image_path, exc)
         return None, None
 
-def connect_to_mongodb():
-    """连接到 MongoDB 数据库"""
-    try:
-        client = MongoClient('mongodb://localhost:27017/')
-        db = client['sina_news_dataset_test']  # 使用项目数据库名
-        
-        # 检查数据库连接
-        client.server_info()
-        logging.info("MongoDB 连接成功")
-        return db
-        
-    except Exception as e:
-        logging.error(f"MongoDB 连接失败: {e}")
-        raise
 
-def remove_hidden_files(directory):
-    """删除._开头的隐藏文件"""
-    directory = Path(directory)
-    count = 0
-    for file in directory.glob("._*"):
-        file.unlink()
-        count += 1
-    if count > 0:
-        logging.info(f"已删除 {count} 个._开头的隐藏文件")
+def calculate_enhanced_weight(clarity_weight: float, text_weight: float) -> float:
+    text_importance = 0.6
+    base_weight = clarity_weight * (1 - text_importance) + text_weight * text_importance
+    return float(np.tanh(base_weight * 1.2))
 
-def reset_sentiment_state(db, year):
-    """重置情感分析状态"""
-    logging.info(f"正在重置 {year} 年的情感分析状态...")
-    
-    # 清空情感分析结果集合
-    sentiment_collection_name = f"{year}_sentiment"
-    if sentiment_collection_name in db.list_collection_names():
-        db[sentiment_collection_name].drop()
-        logging.info(f"已清空 {year} 年的情感分析结果集合 {sentiment_collection_name}")
 
-def calculate_enhanced_weight(clarity_weight, text_weight):
-    """
-    计算增强版的图片权重，使用加权平均和非线性变换
-    
-    参数:
-    clarity_weight: 清晰度权重
-    text_weight: 文字权重
-    
-    返回:
-    增强后的权重值
-    """
-    # 1. 基础权重计算 - 加权平均
-    text_importance = 0.6  # 文字因素更重要
-    base_weight = clarity_weight * (1-text_importance) + text_weight * text_importance
-    
-    # 2. 非线性变换增强对比度
-    enhanced_weight = np.tanh(base_weight * 1.2)
-    
-    return float(enhanced_weight)
+def build_path_mapping(filtered_collection) -> Dict[str, List[dict]]:
+    mapping: Dict[str, List[dict]] = {}
+    for doc in filtered_collection.find({}, {"original_id": 1, "valid_images": 1}):
+        original_id = doc.get("original_id")
+        if original_id and isinstance(doc.get("valid_images"), list):
+            mapping[original_id] = doc["valid_images"]
+    return mapping
 
-def process_images_for_year(model, device, db, year):
-    """处理指定年份的图片"""
-    logging.info(f"\n开始处理 {year} 年的图片...")
-    
-    # 使用年份作为集合名称，添加 _sentiment 后缀
+
+def resolve_image_path(year: int, abs_path: str) -> Optional[Path]:
+    if not abs_path:
+        return None
+
+    raw = Path(abs_path)
+    candidates = [
+        raw,
+        Path.cwd() / raw,
+        SCRIPT_DIR / raw,
+        Path.cwd() / "images" / raw,
+        Path.cwd() / "images" / str(year) / raw,
+        SCRIPT_DIR / "images" / raw,
+        SCRIPT_DIR / "images" / str(year) / raw,
+    ]
+
+    for c in candidates:
+        if c.exists() and c.is_file():
+            return c
+    return None
+
+
+def upsert_news_sentiment_summary(db, year: int) -> int:
     sentiment_collection = db[f"{year}_sentiment"]
-    
-    # 重置情感分析状态
-    reset_sentiment_state(db, year)
-    
-    # 获取质量评分后的图片集合（包含质量评分信息）
-    quality_collection_name = f"{year}_2"
-    if quality_collection_name not in db.list_collection_names():
-        logging.warning(f"找不到质量评分集合: {quality_collection_name}，请先运行图片质量处理程序")
-        return
-    
-    # 获取基础过滤后的图片集合（包含图片路径信息）
-    filtered_collection_name = f"{year}_filtered"
-    if filtered_collection_name not in db.list_collection_names():
-        logging.warning(f"找不到图片路径集合: {filtered_collection_name}，请先运行图片基础过滤程序")
-        return
-    
-    quality_collection = db[quality_collection_name]
-    filtered_collection = db[filtered_collection_name]
-    
-    # 创建映射：original_id -> valid_images
-    logging.info("正在创建 original_id 到 图片路径 的映射...")
-    path_mapping = {}
-    filtered_cursor = filtered_collection.find({})
-    for doc in filtered_cursor:
-        original_id = doc.get("original_id")
-        if original_id and "valid_images" in doc:
-            path_mapping[original_id] = doc["valid_images"]
-    
-    logging.info(f"创建了 {len(path_mapping)} 条图片路径映射记录")
-    
-    # 获取所有质量评分记录
-    cursor = quality_collection.find({})
-    total_docs = quality_collection.count_documents({})
-    
-    if total_docs == 0:
-        logging.warning(f"没有找到 {year} 年的图片记录")
-        return
-    
-    logging.info(f"找到 {total_docs} 条新闻记录")
-    
-    # 初始化计数器
-    negative_count = 0
-    positive_count = 0
-    total_negative_prob = 0.0
-    weighted_negative_prob = 0.0
-    total_weight = 0.0
-    processed_count = 0
-    failed_images = []
-    total_images = 0
-    
-    # 处理每条新闻记录
-    for doc in tqdm(cursor, total=total_docs, desc=f"处理 {year} 年图片"):
-        news_date = doc.get("publish_date", "")
-        title = doc.get("title", "")
-        original_id = doc.get("original_id")
-        
-        # 获取处理后的图片信息（质量评分信息）
-        processed_images = doc.get("processed_images", [])
-        
-        # 获取图片多样性信息
-        diversity_score = doc.get("diversity_score", 1.0)
-        similar_groups = doc.get("similar_groups", 0)
-        unique_ratio = doc.get("unique_ratio", 1.0)
-        
-        # 如果没有图片或没有original_id，跳过此记录
-        if not processed_images or not original_id or original_id not in path_mapping:
-            continue
-            
-        # 获取原始图片路径信息
-        valid_images = path_mapping[original_id]
-        if not valid_images:
-            continue
-            
-        # 确保processed_images和valid_images的长度匹配
-        # 如果不匹配，可能是处理过程中过滤掉了一些图片
-        if len(processed_images) != len(valid_images):
-            logging.warning(f"图片数量不匹配: {title} - 路径:{len(valid_images)}个, 处理结果:{len(processed_images)}个")
-            # 取二者中较小的长度
-            min_length = min(len(processed_images), len(valid_images))
-            processed_images = processed_images[:min_length]
-            valid_images = valid_images[:min_length]
-            
-        # 处理每张图片
-        for i, (proc_img, path_img) in enumerate(zip(processed_images, valid_images)):
-            total_images += 1
-            
-            # 获取图片绝对路径
-            abs_path = path_img.get("abs_path")
-            if not abs_path:
-                failed_images.append((None, "图片路径为空"))
-                continue
-                
-            # 检查路径是否存在
-            if not os.path.exists(abs_path):
-                # 尝试不同的路径组合方式
-                possible_paths = [
-                    abs_path,  # 原始路径
-                    os.path.join(os.getcwd(), abs_path),  # 当前目录 + 相对路径
-                    os.path.join(os.getcwd(), "images", abs_path),  # 当前目录 + images + 相对路径
-                    os.path.join(os.getcwd(), "images", f"{year}", abs_path),  # 当前目录 + images + 年份 + 相对路径
-                ]
-                
-                # 检查哪个路径存在
-                image_path = None
-                for path in possible_paths:
-                    if os.path.exists(path):
-                        image_path = path
-                        break
-                
-                # 如果所有路径都不存在
-                if not image_path:
-                    failed_images.append((abs_path, "文件不存在"))
-                    continue
-            else:
-                image_path = abs_path
-            
-            # 获取权重信息
-            clarity_weight = proc_img.get("clarity_weight", 0.5)
-            text_weight = proc_img.get("text_weight", 0.5)
-            quality_score = proc_img.get("quality_score", 0.5)
-            
-            # 计算综合权重 - 使用增强版权重计算
-            weight = calculate_enhanced_weight(clarity_weight, text_weight)
-            
-            # 对图片进行分类
-            try:
-                predicted_class, negative_prob = classify_image(model, image_path, device)
-                
-                if predicted_class is not None and negative_prob is not None:
-                    # 保存预测结果
-                    result = {
-                        "original_id": original_id,  # 保存原始记录ID
-                        "image_path": image_path,
-                        "rel_path": abs_path,  # 使用原始路径作为相对路径
-                        "predicted_class": predicted_class,  # 0=积极, 1=消极
-                        "negative_likelihood": float(negative_prob),  # 负面情绪概率
-                        "news_date": news_date,
-                        "title": title,
-                        "clarity_weight": clarity_weight,
-                        "text_weight": text_weight,
-                        "weight": weight,  # 综合权重
-                        "quality_score": quality_score,  # 保存质量分数
-                        "diversity_score": diversity_score,  # 新增：多样性分数
-                        "unique_ratio": unique_ratio,  # 新增：独特图片比例
-                        "weighted_score": float(negative_prob * weight * diversity_score),  # 加权情感分数，考虑多样性
-                        "timestamp": datetime.datetime.now()
-                    }
-                    sentiment_collection.insert_one(result)
-                    
-                    # 更新统计
-                    if predicted_class == 1:  # 消极
-                        negative_count += 1
-                    else:  # 积极
-                        positive_count += 1
-                        
-                    total_negative_prob += negative_prob
-                    weighted_negative_prob += negative_prob * weight * diversity_score  # 考虑多样性
-                    total_weight += weight
-                    processed_count += 1
-                    
-                else:
-                    failed_images.append((image_path, "模型预测失败"))
-                    
-            except Exception as e:
-                logging.error(f"处理失败 {image_path}: {e}")
-                failed_images.append((image_path, str(e)))
+    news_collection = db[f"{year}_news_sentiment"]
+    news_collection.drop()
 
-    # 计算新闻级别的平均情感分数
-    if processed_count > 0:
-        logging.info("计算新闻级别的平均情感分数...")
-        
-        # 创建新闻情感汇总集合
-        news_sentiment_collection = db[f"{year}_news_sentiment"]
-        news_sentiment_collection.drop()  # 先清空集合
-        
-        # 聚合查询，按新闻(日期+标题)分组计算平均情感分数
-        pipeline = [
-            {"$group": {
+    pipeline = [
+        {
+            "$group": {
                 "_id": {"news_date": "$news_date", "title": "$title"},
                 "avg_negative_likelihood": {"$avg": "$negative_likelihood"},
                 "avg_weighted_score": {"$avg": "$weighted_score"},
                 "avg_weight": {"$avg": "$weight"},
                 "avg_quality_score": {"$avg": "$quality_score"},
-                "avg_diversity_score": {"$avg": "$diversity_score"},  # 新增：平均多样性分数
-                "avg_unique_ratio": {"$avg": "$unique_ratio"},  # 新增：平均独特比例
+                "avg_diversity_score": {"$avg": "$diversity_score"},
+                "avg_unique_ratio": {"$avg": "$unique_ratio"},
                 "image_count": {"$sum": 1},
                 "negative_count": {"$sum": {"$cond": [{"$eq": ["$predicted_class", 1]}, 1, 0]}},
-                "positive_count": {"$sum": {"$cond": [{"$eq": ["$predicted_class", 0]}, 1, 0]}}
-            }},
-            {"$project": {
+                "positive_count": {"$sum": {"$cond": [{"$eq": ["$predicted_class", 0]}, 1, 0]}},
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
                 "news_date": "$_id.news_date",
                 "title": "$_id.title",
                 "avg_negative_likelihood": 1,
                 "avg_weighted_score": 1,
                 "avg_weight": 1,
                 "avg_quality_score": 1,
-                "avg_diversity_score": 1,  # 新增：平均多样性分数
-                "avg_unique_ratio": 1,  # 新增：平均独特比例
+                "avg_diversity_score": 1,
+                "avg_unique_ratio": 1,
                 "image_count": 1,
                 "negative_count": 1,
                 "positive_count": 1,
-                "negative_ratio": {"$divide": ["$negative_count", "$image_count"]}
-            }},
-            {"$sort": {"news_date": 1}}
-        ]
-        
-        news_results = list(sentiment_collection.aggregate(pipeline))
-        
-        # 保存新闻级别的情感分数
-        if news_results:
-            news_sentiment_collection.insert_many(news_results)
-            logging.info(f"已计算并保存 {len(news_results)} 条新闻的平均情感分数")
-    
-    # 打印统计信息
-    logging.info("\n=== 处理统计 ===")
-    logging.info(f"总图片数: {total_images}")
-    logging.info(f"处理成功: {processed_count}")
-    logging.info(f"处理失败: {len(failed_images)}")
-    
-    if processed_count > 0:
-        logging.info(f"\n分类结果:")
-        logging.info(f"积极图片 (0): {positive_count} ({positive_count/processed_count*100:.1f}%)")
-        logging.info(f"消极图片 (1): {negative_count} ({negative_count/processed_count*100:.1f}%)")
-        logging.info(f"平均负面概率: {total_negative_prob/processed_count:.3f}")
-        logging.info(f"加权平均负面概率: {weighted_negative_prob/total_weight:.3f}")
-    
-    # 记录失败的图片
-    if failed_images:
-        logging.info("\n=== 失败记录 ===")
-        for img_path, error in failed_images[:10]:  # 只显示前10个
-            logging.info(f"- {img_path}: {error}")
-        if len(failed_images) > 10:
-            logging.info(f"... 还有 {len(failed_images)-10} 个失败记录")
+                "negative_ratio": {
+                    "$cond": [
+                        {"$gt": ["$image_count", 0]},
+                        {"$divide": ["$negative_count", "$image_count"]},
+                        0,
+                    ]
+                },
+            }
+        },
+        {"$sort": {"news_date": 1}},
+    ]
 
-def main():
-    """主函数，提供预测功能"""
-    try:
-        import argparse
-        
-        # 过滤掉Jupyter相关的参数
-        jupyter_args = [arg for arg in sys.argv if arg.startswith('--f=')]
-        for arg in jupyter_args:
-            sys.argv.remove(arg)
-        
-        parser = argparse.ArgumentParser(description='ViT情感分析模型预测')
-        parser.add_argument('--years', type=int, nargs='+', default=years_to_process,
-                            help='要处理的年份列表，例如: --years 2019 2022 2024')
-        parser.add_argument('--model', type=str, default='improved_vit_sentiment_model.pth',
-                            help='模型路径，默认使用improved_vit_sentiment_model.pth')
-        
-        args = parser.parse_args()
-        
-        # 检查环境
-        check_environment()
-        
-        # 删除隐藏文件
-        remove_all_hidden_files()
-        
-        # 获取当前工作目录
-        current_dir = os.getcwd()
-        logging.info(f"当前工作目录: {current_dir}")
-        
-        # 检查模型文件
-        if not os.path.exists(args.model):
-            logging.error(f"模型文件不存在: {args.model}")
-            return
-        
-        # 加载模型
-        model, device = load_model(args.model)
-        
-        # 连接数据库
-        db = connect_to_mongodb()
-        
-        # 处理每年的图片
-        for year in args.years:
-            process_images_for_year(model, device, db, year)
-        
-        logging.info("\n情感分析完成，结果已保存到 MongoDB")
-        
-    except Exception as e:
-        logging.error(f"程序运行出错: {e}")
-        raise
+    rows = list(sentiment_collection.aggregate(pipeline))
+    if rows:
+        news_collection.insert_many(rows)
+    return len(rows)
+
+
+def process_year(
+    model: nn.Module,
+    device: torch.device,
+    transform,
+    db,
+    year: int,
+    args: argparse.Namespace,
+    checkpoint: dict,
+    checkpoint_path: Path,
+    resume: bool,
+) -> None:
+    quality_collection_name = f"{year}_2"
+    filtered_collection_name = f"{year}_filtered"
+    sentiment_collection_name = f"{year}_sentiment"
+
+    collections = set(db.list_collection_names())
+    if quality_collection_name not in collections:
+        logging.warning("Skip %s: missing collection %s", year, quality_collection_name)
+        return
+    if filtered_collection_name not in collections:
+        logging.warning("Skip %s: missing collection %s", year, filtered_collection_name)
+        return
+
+    year_key = str(year)
+    year_ckpt = checkpoint.setdefault("years", {}).setdefault(year_key, {})
+    last_doc_id = year_ckpt.get("last_doc_id") if resume else None
+
+    should_drop_existing = (
+        (not args.keep_existing)
+        and (sentiment_collection_name in collections)
+        and (not (resume and last_doc_id))
+    )
+    if should_drop_existing:
+        db[sentiment_collection_name].drop()
+        logging.info("Dropped existing collection: %s", sentiment_collection_name)
+    elif resume and last_doc_id:
+        logging.info("Resume mode enabled for %s, continuing after _id=%s", year, last_doc_id)
+
+    quality_collection = db[quality_collection_name]
+    filtered_collection = db[filtered_collection_name]
+    sentiment_collection = db[sentiment_collection_name]
+
+    path_mapping = build_path_mapping(filtered_collection)
+    query = {}
+    if resume and last_doc_id:
+        try:
+            query["_id"] = {"$gt": ObjectId(last_doc_id)}
+        except Exception:
+            logging.warning("Invalid checkpoint _id for %s: %s; fallback to full-year query", year, last_doc_id)
+
+    total_docs = quality_collection.count_documents(query)
+    if args.max_news_per_year > 0:
+        total_docs = min(total_docs, args.max_news_per_year)
+    if total_docs == 0:
+        logging.warning("No docs in %s", quality_collection_name)
+        return
+
+    projection = {
+        "publish_date": 1,
+        "news_date": 1,
+        "title": 1,
+        "original_id": 1,
+        "processed_images": 1,
+        "diversity_score": 1,
+        "unique_ratio": 1,
+    }
+    cursor = quality_collection.find(query, projection).sort("_id", 1)
+    if args.max_news_per_year > 0:
+        cursor = cursor.limit(args.max_news_per_year)
+
+    negative_count = 0
+    positive_count = 0
+    total_negative_prob = 0.0
+    weighted_negative_prob = 0.0
+    total_weight = 0.0
+    processed_count = 0
+    total_images = 0
+    failed_images: List[Tuple[str, str]] = []
+    processed_docs = 0
+
+    for doc in tqdm(cursor, total=total_docs, desc=f"Sentiment {year}"):
+        news_date = doc.get("news_date") or doc.get("publish_date") or f"{year}-01-01"
+        title = doc.get("title", "")
+        original_id = doc.get("original_id")
+        processed_images = doc.get("processed_images") or []
+        diversity_score = float(doc.get("diversity_score", 1.0) or 1.0)
+        unique_ratio = float(doc.get("unique_ratio", 1.0) or 1.0)
+
+        if not processed_images:
+            continue
+
+        mapped_valid_images = path_mapping.get(original_id, []) if original_id else []
+
+        doc_ops: List[UpdateOne] = []
+        for idx, proc_img in enumerate(processed_images):
+            total_images += 1
+
+            abs_path = str(proc_img.get("abs_path") or "").strip()
+            if not abs_path and idx < len(mapped_valid_images):
+                abs_path = str(mapped_valid_images[idx].get("abs_path") or "").strip()
+            if not abs_path:
+                failed_images.append(("", "missing_path"))
+                continue
+
+            image_path = resolve_image_path(year, abs_path)
+            if image_path is None:
+                failed_images.append((abs_path, "file_not_found"))
+                continue
+
+            clarity_weight = float(proc_img.get("clarity_weight", 0.5) or 0.5)
+            text_weight = float(proc_img.get("text_weight", 0.5) or 0.5)
+            quality_score = float(proc_img.get("quality_score", 0.5) or 0.5)
+            weight = calculate_enhanced_weight(clarity_weight, text_weight)
+
+            predicted_class, negative_prob = classify_image(model, image_path, device, transform)
+            if predicted_class is None or negative_prob is None:
+                failed_images.append((str(image_path), "inference_failed"))
+                continue
+
+            record_key = f"{original_id}::{abs_path}"
+            result_doc = {
+                "record_key": record_key,
+                "original_id": original_id,
+                "image_path": str(image_path),
+                "rel_path": abs_path,
+                "predicted_class": int(predicted_class),
+                "negative_likelihood": float(negative_prob),
+                "news_date": news_date,
+                "title": title,
+                "clarity_weight": clarity_weight,
+                "text_weight": text_weight,
+                "weight": weight,
+                "quality_score": quality_score,
+                "diversity_score": diversity_score,
+                "unique_ratio": unique_ratio,
+                "weighted_score": float(negative_prob * weight * diversity_score),
+                "timestamp": datetime.datetime.now(),
+            }
+            doc_ops.append(UpdateOne({"record_key": record_key}, {"$set": result_doc}, upsert=True))
+
+            if predicted_class == 1:
+                negative_count += 1
+            else:
+                positive_count += 1
+            total_negative_prob += negative_prob
+            weighted_negative_prob += negative_prob * weight * diversity_score
+            total_weight += weight
+            processed_count += 1
+
+            if len(doc_ops) >= args.batch_write_size:
+                sentiment_collection.bulk_write(doc_ops, ordered=False)
+                doc_ops.clear()
+
+        if doc_ops:
+            sentiment_collection.bulk_write(doc_ops, ordered=False)
+
+        processed_docs += 1
+        year_ckpt["last_doc_id"] = str(doc.get("_id"))
+        year_ckpt["processed_docs"] = int(year_ckpt.get("processed_docs", 0)) + 1
+        year_ckpt["updated_at"] = datetime.datetime.now().isoformat()
+
+        if processed_docs % args.checkpoint_every == 0:
+            save_checkpoint(checkpoint_path, checkpoint)
+
+    news_count = upsert_news_sentiment_summary(db, year) if processed_count > 0 else 0
+
+    year_ckpt["completed"] = True
+    year_ckpt["completed_at"] = datetime.datetime.now().isoformat()
+    save_checkpoint(checkpoint_path, checkpoint)
+
+    logging.info("=== %s summary ===", year)
+    logging.info("Total images seen: %d", total_images)
+    logging.info("Successful predictions: %d", processed_count)
+    logging.info("Failed predictions: %d", len(failed_images))
+    logging.info("News-level summary rows: %d", news_count)
+
+    if processed_count > 0:
+        logging.info("Positive (0): %d (%.2f%%)", positive_count, positive_count / processed_count * 100)
+        logging.info("Negative (1): %d (%.2f%%)", negative_count, negative_count / processed_count * 100)
+        logging.info("Avg negative likelihood: %.4f", total_negative_prob / processed_count)
+        if total_weight > 0:
+            logging.info("Weighted avg negative likelihood: %.4f", weighted_negative_prob / total_weight)
+
+    if failed_images:
+        for image_path, reason in failed_images[:10]:
+            logging.info("Failed sample: %s (%s)", image_path, reason)
+        if len(failed_images) > 10:
+            logging.info("... and %d more failures", len(failed_images) - 10)
+
+
+def main() -> None:
+    args = parse_args()
+
+    years = resolve_years(args)
+    logging.info("Years to process: %s", years)
+
+    checkpoint_path = Path(args.checkpoint_file)
+    if args.reset_checkpoint and checkpoint_path.exists():
+        checkpoint_path.unlink()
+        logging.info("Removed old checkpoint: %s", checkpoint_path)
+
+    resume = not args.no_resume
+    checkpoint = load_checkpoint(checkpoint_path) if resume else {"years": {}}
+
+    remove_hidden_files_if_needed(Path.cwd() / "images")
+
+    device = detect_device()
+    model_path = resolve_model_path(args)
+    validate_strict_model(args, model_path)
+    model = load_model(model_path, args.model_name, args.dropout_rate, device)
+    transform = build_transform()
+
+    db = connect_to_mongodb(args.mongo_uri, args.db_name)
+    for year in years:
+        process_year(model, device, transform, db, year, args, checkpoint, checkpoint_path, resume)
+
+    logging.info("Sentiment analysis completed for years: %s", years)
+
 
 if __name__ == "__main__":
     main()

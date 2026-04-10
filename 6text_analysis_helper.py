@@ -14,6 +14,7 @@ import pytesseract
 from PIL import Image
 from pymongo import MongoClient
 from tqdm import tqdm
+from pytesseract import Output
 
 try:
     from scipy.stats import gaussian_kde
@@ -80,6 +81,34 @@ def extract_text(image_path: str, lang: str) -> str:
         return ""
 
 
+def extract_text_with_confidence(image_path: str, lang: str) -> Dict[str, Any]:
+    try:
+        with Image.open(image_path) as img:
+            text = pytesseract.image_to_string(img, lang=lang)
+            data = pytesseract.image_to_data(img, lang=lang, output_type=Output.DICT)
+
+        cleaned = " ".join(text.split())
+        conf_values: List[float] = []
+        for raw_conf in data.get("conf", []):
+            try:
+                conf_val = float(raw_conf)
+                if conf_val >= 0:
+                    conf_values.append(conf_val)
+            except Exception:
+                continue
+
+        avg_conf = float(np.mean(conf_values)) if conf_values else 0.0
+        return {
+            "text": cleaned,
+            "avg_conf": avg_conf,
+        }
+    except Exception:
+        return {
+            "text": "",
+            "avg_conf": 0.0,
+        }
+
+
 class TextAnalyzer:
     def __init__(self, args: argparse.Namespace):
         self.args = args
@@ -89,9 +118,12 @@ class TextAnalyzer:
         self.sampled_records: List[Dict[str, Any]] = []
         self.text_lengths: List[int] = []
         self.text_contents: List[str] = []
+        self.ocr_confidences: List[float] = []
+        self.text_signals: List[float] = []
 
     def fetch_filtered_images(self, years: List[int]) -> None:
         records: List[Dict[str, Any]] = []
+        seen_paths = set()
 
         for year in years:
             collection_name = f"{year}_filtered"
@@ -110,7 +142,8 @@ class TextAnalyzer:
                 link = str(doc.get("link") or "")
                 for img in doc.get("valid_images", []):
                     abs_path = str(img.get("abs_path") or "").strip()
-                    if abs_path and Path(abs_path).exists():
+                    if abs_path and abs_path not in seen_paths and Path(abs_path).exists():
+                        seen_paths.add(abs_path)
                         records.append(
                             {
                                 "year": year,
@@ -159,9 +192,9 @@ class TextAnalyzer:
             return
 
         with ThreadPoolExecutor(max_workers=self.args.num_workers) as executor:
-            texts = list(
+            ocr_results = list(
                 tqdm(
-                    executor.map(lambda r: extract_text(r["abs_path"], self.args.ocr_lang), self.sampled_records),
+                    executor.map(lambda r: extract_text_with_confidence(r["abs_path"], self.args.ocr_lang), self.sampled_records),
                     total=len(self.sampled_records),
                     desc="Extracting OCR text",
                     unit="img",
@@ -171,37 +204,57 @@ class TextAnalyzer:
         filtered_records: List[Dict[str, Any]] = []
         filtered_lengths: List[int] = []
         filtered_texts: List[str] = []
-        for rec, text in zip(self.sampled_records, texts):
+        filtered_confs: List[float] = []
+        filtered_signals: List[float] = []
+        for rec, result in zip(self.sampled_records, ocr_results):
+            text = result.get("text", "")
+            avg_conf = float(result.get("avg_conf", 0.0))
             if len(text) >= self.args.min_text_length:
                 filtered_records.append(rec)
                 filtered_lengths.append(len(text))
                 filtered_texts.append(text)
+                filtered_confs.append(avg_conf)
+                filtered_signals.append(len(text) * (avg_conf / 100.0))
 
         self.sampled_records = filtered_records
         self.text_lengths = filtered_lengths
         self.text_contents = filtered_texts
-        logging.info(f"Analyzed {len(texts)} sampled images, {len(self.text_lengths)} kept after text-length filter")
+        self.ocr_confidences = filtered_confs
+        self.text_signals = filtered_signals
+        logging.info(f"Analyzed {len(ocr_results)} sampled images, {len(self.text_lengths)} kept after text-length filter")
 
     def calculate_statistics(self) -> Dict[str, Any]:
-        if not self.text_lengths:
+        if not self.text_signals:
             return {}
 
-        arr = np.array(self.text_lengths, dtype=float)
+        signal_arr = np.array(self.text_signals, dtype=float)
+        length_arr = np.array(self.text_lengths, dtype=float)
+        conf_arr = np.array(self.ocr_confidences, dtype=float)
         return {
-            "count": int(arr.size),
-            "min": float(np.min(arr)),
-            "max": float(np.max(arr)),
-            "mean": float(np.mean(arr)),
-            "median": float(np.median(arr)),
-            "std": float(np.std(arr)),
+            "count": int(signal_arr.size),
+            "text_signal": {
+                "min": float(np.min(signal_arr)),
+                "max": float(np.max(signal_arr)),
+                "mean": float(np.mean(signal_arr)),
+                "median": float(np.median(signal_arr)),
+                "std": float(np.std(signal_arr)),
+            },
+            "raw_text_length": {
+                "mean": float(np.mean(length_arr)),
+                "median": float(np.median(length_arr)),
+            },
+            "ocr_confidence": {
+                "mean": float(np.mean(conf_arr)) if conf_arr.size > 0 else 0.0,
+                "median": float(np.median(conf_arr)) if conf_arr.size > 0 else 0.0,
+            },
             "percentiles": {
-                "10%": float(np.percentile(arr, 10)),
-                "25%": float(np.percentile(arr, 25)),
-                "50%": float(np.percentile(arr, 50)),
-                "75%": float(np.percentile(arr, 75)),
-                "90%": float(np.percentile(arr, 90)),
-                "95%": float(np.percentile(arr, 95)),
-                "99%": float(np.percentile(arr, 99)),
+                "10%": float(np.percentile(signal_arr, 10)),
+                "25%": float(np.percentile(signal_arr, 25)),
+                "50%": float(np.percentile(signal_arr, 50)),
+                "75%": float(np.percentile(signal_arr, 75)),
+                "90%": float(np.percentile(signal_arr, 90)),
+                "95%": float(np.percentile(signal_arr, 95)),
+                "99%": float(np.percentile(signal_arr, 99)),
             },
         }
 
@@ -233,17 +286,23 @@ class TextAnalyzer:
         }
 
     def show_examples(self, thresholds: Dict[str, float]) -> None:
-        if not thresholds or not self.text_lengths:
+        if not thresholds or not self.text_signals:
             return
 
         buckets = {"none": [], "low": [], "medium": [], "high": []}
-        for rec, length, text in zip(self.sampled_records, self.text_lengths, self.text_contents):
-            item = (rec["abs_path"], rec["news_date"], length, text)
+        for rec, length, text, signal, conf in zip(
+            self.sampled_records,
+            self.text_lengths,
+            self.text_contents,
+            self.text_signals,
+            self.ocr_confidences,
+        ):
+            item = (rec["abs_path"], rec["news_date"], length, signal, conf, text)
             if length == 0:
                 buckets["none"].append(item)
-            elif length < thresholds["low_text"]:
+            elif signal < thresholds["low_text"]:
                 buckets["low"].append(item)
-            elif length < thresholds["medium_text"]:
+            elif signal < thresholds["medium_text"]:
                 buckets["medium"].append(item)
             else:
                 buckets["high"].append(item)
@@ -254,27 +313,27 @@ class TextAnalyzer:
                 continue
             samples = random.sample(items, min(self.args.examples, len(items)))
             logging.info(f"[{name}] examples ({len(items)} total):")
-            for path, date, length, text in samples:
+            for path, date, length, signal, conf, text in samples:
                 snippet = text[:100] + ("..." if len(text) > 100 else "")
-                logging.info(f"  {date} | len={length} | {path}")
+                logging.info(f"  {date} | len={length} | signal={signal:.2f} | conf={conf:.2f} | {path}")
                 logging.info(f"    text: {snippet}")
 
     def plot_distribution(self, stats: Dict[str, Any]) -> None:
-        if not stats or not self.text_lengths:
+        if not stats or not self.text_signals:
             return
 
         output_dir = Path(self.args.output_dir)
         plot_path = output_dir / f"{self.args.output_prefix}_length_distribution.png"
 
-        arr = np.array(self.text_lengths, dtype=float)
+        arr = np.array(self.text_signals, dtype=float)
         x_limit = float(np.percentile(arr, 99.5))
         filtered = arr[arr <= x_limit]
 
         plt.figure(figsize=(12, 8))
         plt.subplot(2, 1, 1)
         plt.hist(filtered, bins=50, alpha=0.75, color="royalblue", edgecolor="black")
-        plt.title("OCR Text Length Histogram")
-        plt.xlabel("text length")
+        plt.title("OCR Text Signal Histogram")
+        plt.xlabel("text signal (length * confidence)")
         plt.ylabel("count")
         plt.grid(alpha=0.3)
 
@@ -285,8 +344,8 @@ class TextAnalyzer:
             plt.plot(xs, kde(xs), "r-", linewidth=2)
         else:
             plt.hist(filtered, bins=50, alpha=0.6, color="tomato", edgecolor="black", density=True)
-        plt.title("OCR Text Length Density")
-        plt.xlabel("text length")
+        plt.title("OCR Text Signal Density")
+        plt.xlabel("text signal (length * confidence)")
         plt.ylabel("density")
         plt.grid(alpha=0.3)
 
@@ -303,12 +362,12 @@ class TextAnalyzer:
 
         code = (
             "import numpy as np\n\n"
-            "def calculate_text_weight(text_length):\n"
+            "def calculate_text_weight(text_signal):\n"
             f"    midpoint = {params['midpoint']:.6f}\n"
             f"    steepness = {params['steepness']:.6f}\n"
             f"    min_weight = {params['min_weight']:.6f}\n"
             f"    max_weight = {params['max_weight']:.6f}\n"
-            "    return max_weight - (max_weight - min_weight) / (1 + np.exp(-steepness * (text_length - midpoint)))\n"
+            "    return max_weight - (max_weight - min_weight) / (1 + np.exp(-steepness * (text_signal - midpoint)))\n"
         )
         out_path.write_text(code, encoding="utf-8")
         return out_path
@@ -347,7 +406,7 @@ class TextAnalyzer:
             "image_counts": {
                 "total_collected": len(self.records),
                 "sampled": len(self.sampled_records),
-                "with_valid_text": len(self.text_lengths),
+                "with_valid_text": len(self.text_signals),
             },
             "statistics": stats,
             "thresholds": thresholds,

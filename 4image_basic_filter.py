@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import hashlib
 import json
 import logging
 import os
@@ -31,6 +32,7 @@ ASPECT_RATIO_THRESHOLD = 3.0
 MIN_IMAGE_SIZE = 150
 MAX_IMAGE_SIZE = 4000
 MIN_CONTENT_AREA = 0.15
+MIN_FILE_BYTES = 1024
 
 VALID_IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp")
 
@@ -67,8 +69,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-image-size", type=int, default=MIN_IMAGE_SIZE, help="Min width/height in pixels")
     parser.add_argument("--max-image-size", type=int, default=MAX_IMAGE_SIZE, help="Max width/height in pixels")
     parser.add_argument("--min-content-area", type=float, default=MIN_CONTENT_AREA, help="Min foreground content ratio")
+    parser.add_argument("--min-file-bytes", type=int, default=MIN_FILE_BYTES, help="Reject files smaller than this byte size")
     parser.add_argument("--disable-content-area-filter", action="store_true", help="Disable content area filtering")
     parser.add_argument("--disable-qr-filter", action="store_true", help="Disable QR code filtering")
+    parser.add_argument("--disable-dedup", action="store_true", help="Disable duplicate image filtering by file hash")
 
     parser.add_argument("--summary-file", type=str, default=None, help="Summary JSON output file")
     parser.add_argument("--checkpoint-file", type=str, default=None, help="Checkpoint JSON file")
@@ -104,6 +108,8 @@ def parse_args() -> argparse.Namespace:
         raise ValueError("--min-content-area must be between 0 and 1")
     if args.aspect_ratio_threshold < 1:
         raise ValueError("--aspect-ratio-threshold must be >= 1")
+    if args.min_file_bytes < 0:
+        raise ValueError("--min-file-bytes must be >= 0")
 
     return args
 
@@ -151,14 +157,29 @@ class ImageBasicFilter:
         self.metrics: Dict[str, int] = {
             "total_images": 0,
             "invalid_images": 0,
+            "small_file_rejected": 0,
             "size_ratio_rejected": 0,
             "qr_code_images": 0,
             "content_area_rejected": 0,
+            "duplicate_images": 0,
             "passed_images": 0,
             "folders_missing": 0,
             "mappings_attempted": 0,
             "mappings_completed": 0,
         }
+
+    def compute_file_hash(self, image_path: str) -> str:
+        try:
+            hasher = hashlib.md5()
+            with open(image_path, "rb") as f:
+                while True:
+                    chunk = f.read(8192)
+                    if not chunk:
+                        break
+                    hasher.update(chunk)
+            return hasher.hexdigest()
+        except Exception:
+            return ""
 
     def is_valid_image(self, image_path: str) -> Tuple[bool, Optional[Image.Image]]:
         try:
@@ -200,6 +221,15 @@ class ImageBasicFilter:
 
     def process_single_image(self, image_path: str) -> Dict[str, Any]:
         self.metrics["total_images"] += 1
+
+        try:
+            size_in_bytes = os.path.getsize(image_path)
+            if size_in_bytes < self.args.min_file_bytes:
+                self.metrics["small_file_rejected"] += 1
+                return {"valid": False, "reject_reason": "small_file"}
+        except Exception:
+            self.metrics["invalid_images"] += 1
+            return {"valid": False, "reject_reason": "stat_failed"}
 
         is_valid, pil_image = self.is_valid_image(image_path)
         if not is_valid:
@@ -303,6 +333,7 @@ class ImageBasicFilterRunner:
 
         valid_images: List[Dict[str, str]] = []
         rejected_images: List[Dict[str, str]] = []
+        seen_hashes = set()
 
         if not folder_path or not abs_folder.exists():
             self.filter.metrics["folders_missing"] += 1
@@ -310,6 +341,8 @@ class ImageBasicFilterRunner:
         else:
             for root, _, files in os.walk(abs_folder):
                 for file_name in files:
+                    if file_name.startswith("._"):
+                        continue
                     if not file_name.lower().endswith(VALID_IMAGE_SUFFIXES):
                         continue
                     image_path = os.path.join(root, file_name)
@@ -317,9 +350,20 @@ class ImageBasicFilterRunner:
 
                     result = self.filter.process_single_image(image_path)
                     if result["valid"]:
+                        file_hash = self.filter.compute_file_hash(image_path)
+                        if (not self.args.disable_dedup) and file_hash:
+                            if file_hash in seen_hashes:
+                                self.filter.metrics["duplicate_images"] += 1
+                                rejected_images.append({
+                                    "path": rel_path,
+                                    "reason": "duplicate_image",
+                                })
+                                continue
+                            seen_hashes.add(file_hash)
                         valid_images.append({
                             "path": rel_path,
                             "abs_path": image_path,
+                            "file_hash": file_hash,
                         })
                     else:
                         rejected_images.append({
@@ -639,8 +683,10 @@ class ImageBasicFilterRunner:
                 "max_image_size": self.args.max_image_size,
                 "aspect_ratio_threshold": self.args.aspect_ratio_threshold,
                 "min_content_area": self.args.min_content_area,
+                "min_file_bytes": self.args.min_file_bytes,
                 "disable_content_area_filter": self.args.disable_content_area_filter,
                 "disable_qr_filter": self.args.disable_qr_filter,
+                "disable_dedup": self.args.disable_dedup,
                 "checkpoint_file": self.args.checkpoint_file,
                 "status_file": self.args.status_file,
                 "summary_file": self.args.summary_file,
