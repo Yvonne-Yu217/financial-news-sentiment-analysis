@@ -25,7 +25,8 @@ logging.basicConfig(
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_ARTIFACTS_DIR = SCRIPT_DIR / "run_artifacts" / "8vit_transferlearning"
-DEFAULT_CHECKPOINT_FILE = SCRIPT_DIR / "run_artifacts" / "9sentiment_analyzer" / "sentiment_checkpoint.json"
+DEFAULT_CHECKPOINT_FILE = SCRIPT_DIR / "run_artifacts" / "9sentiment_analyzer_oldmodel" / "sentiment_checkpoint_oldmodel.json"
+DEFAULT_OLD_MODEL_PATH = SCRIPT_DIR / "improved_vit_sentiment_model_old.pth"
 
 
 class ImprovedViTModel(nn.Module):
@@ -52,7 +53,7 @@ class ImprovedViTModel(nn.Module):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Script 9: image sentiment inference and MongoDB write-back")
+    parser = argparse.ArgumentParser(description="Script 9 (old-model variant): image sentiment inference using improved_vit_sentiment_model_old.pth")
     parser.add_argument("--start-year", type=int, default=2014)
     parser.add_argument("--end-year", type=int, default=2026)
     parser.add_argument("--years", nargs="+", type=int, default=None, help="Optional explicit year list")
@@ -60,10 +61,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mongo-uri", default="mongodb://localhost:27017/")
     parser.add_argument("--db-name", default="sina_news_dataset_test")
 
-    parser.add_argument("--model", default="", help="Optional explicit model path")
+    # Default to the old model; --collection-suffix isolates output from live data
+    parser.add_argument("--model", default=str(DEFAULT_OLD_MODEL_PATH), help="Model path (defaults to old model)")
     parser.add_argument("--model-name", default="vit_base_patch16_224", help="timm backbone name")
     parser.add_argument("--dropout-rate", type=float, default=0.2)
     parser.add_argument("--artifacts-dir", default=str(DEFAULT_ARTIFACTS_DIR))
+    parser.add_argument("--collection-suffix", default="_old",
+                        help="Suffix appended to output collection names (e.g. '_old' → {year}_sentiment_old)")
 
     parser.add_argument("--batch-write-size", type=int, default=500)
     parser.add_argument("--max-news-per-year", type=int, default=0, help="For smoke test/debug only")
@@ -72,10 +76,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint-every", type=int, default=20, help="Save checkpoint every N processed docs")
     parser.add_argument("--no-resume", action="store_true", help="Disable checkpoint resume")
     parser.add_argument("--reset-checkpoint", action="store_true", help="Delete checkpoint file before run")
-    parser.add_argument("--strict-model-only", action="store_true", default=True, help="Require strict-model artifacts metadata")
+    # Old model is not from the strict artifacts dir — disable strict validation by default
+    parser.add_argument("--strict-model-only", action="store_true", default=False, help="Require strict-model artifacts metadata")
     parser.add_argument("--no-strict-model-only", dest="strict_model_only", action="store_false")
-    parser.add_argument("--collection-suffix", default="", help="Suffix appended to output collection names (e.g. '_pncc')")
-    parser.add_argument("--skip-remove-hidden", action="store_true", default=False, help="Skip removing macOS ._* hidden files from images/ (fast startup on large external drives)")
 
     return parser.parse_args()
 
@@ -124,16 +127,11 @@ def resolve_model_path(args: argparse.Namespace) -> Path:
             user_model = Path.cwd() / user_model
         candidates.append(user_model)
 
-    artifacts_dir = Path(args.artifacts_dir)
-    if not artifacts_dir.is_absolute():
-        artifacts_dir = Path.cwd() / artifacts_dir
-
+    # Also try the default old model location as fallback
     candidates.extend(
         [
-            artifacts_dir / "8vit_best_model.pth",
-            artifacts_dir / "8vit_final_model.pth",
-            Path.cwd() / "improved_vit_sentiment_model.pth",
-            SCRIPT_DIR / "improved_vit_sentiment_model.pth",
+            DEFAULT_OLD_MODEL_PATH,
+            SCRIPT_DIR / "improved_vit_sentiment_model_old.pth",
         ]
     )
 
@@ -291,7 +289,7 @@ def resolve_image_path(year: int, abs_path: str) -> Optional[Path]:
     return None
 
 
-def upsert_news_sentiment_summary(db, year: int, suffix: str = "") -> int:
+def upsert_news_sentiment_summary(db, year: int, suffix: str = "_old") -> int:
     sentiment_collection = db[f"{year}_sentiment{suffix}"]
     news_collection = db[f"{year}_news_sentiment{suffix}"]
     news_collection.drop()
@@ -354,9 +352,9 @@ def process_year(
     checkpoint_path: Path,
     resume: bool,
 ) -> None:
+    suffix = getattr(args, "collection_suffix", "_old")
     quality_collection_name = f"{year}_2"
     filtered_collection_name = f"{year}_filtered"
-    suffix = getattr(args, "collection_suffix", "")
     sentiment_collection_name = f"{year}_sentiment{suffix}"
 
     collections = set(db.list_collection_names())
@@ -548,8 +546,7 @@ def main() -> None:
     resume = not args.no_resume
     checkpoint = load_checkpoint(checkpoint_path) if resume else {"years": {}}
 
-    if not args.skip_remove_hidden:
-        remove_hidden_files_if_needed(Path.cwd() / "images")
+    remove_hidden_files_if_needed(Path.cwd() / "images")
 
     device = detect_device()
     model_path = resolve_model_path(args)

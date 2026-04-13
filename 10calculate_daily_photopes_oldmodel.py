@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Script 10: calculate daily PhotoPes / WeightedPhotoPes from script-9 outputs."""
+"""Script 10 (old-model variant): calculate daily PhotoPes / WeightedPhotoPes from {year}_sentiment_old collections."""
 
 import argparse
 import logging
@@ -33,7 +33,7 @@ def connect_to_mongodb(mongo_uri: str, db_name: str):
     return client[db_name]
 
 
-def calculate_daily_photopes(db, years, output_file=None, collection_suffix=""):
+def calculate_daily_photopes(db, years, output_file=None, collection_suffix="_old"):
     """Read {year}_sentiment and compute daily PhotoPes metrics."""
     all_results = []
 
@@ -327,16 +327,17 @@ def update_excel_with_photopes(df, excel_file):
         logging.error(f"更新Excel文件时出错: {e}")
 
 def main():
-    parser = argparse.ArgumentParser(description="计算每日加权PhotoPes指标")
+    parser = argparse.ArgumentParser(description="计算每日加权PhotoPes指标 (old-model variant)")
     parser.add_argument("--years", nargs="+", type=int, default=DEFAULT_YEARS, help="要处理的年份列表")
-    parser.add_argument("--output", type=str, default="results/weighted_photopes.csv", help="输出文件路径")
+    parser.add_argument("--output", type=str, default="results/weighted_photopes_old.csv", help="输出文件路径")
     parser.add_argument("--plot", action="store_true", help="是否绘制图表")
     parser.add_argument("--plot-dir", type=str, default="plots", help="图表保存目录")
     parser.add_argument("--compare", action="store_true", help="是否比较不同PhotoPes指标")
     parser.add_argument("--update-excel", type=str, default=None, help="要更新的Excel文件路径")
     parser.add_argument("--mongo-uri", type=str, default="mongodb://localhost:27017/", help="MongoDB URI")
     parser.add_argument("--db-name", type=str, default="sina_news_dataset_test", help="MongoDB数据库名")
-    parser.add_argument("--collection-suffix", type=str, default="", help="Suffix appended to sentiment collection names (e.g. '_pncc')")
+    parser.add_argument("--collection-suffix", type=str, default="_old",
+                        help="Suffix for sentiment collections (e.g. '_old' reads {year}_sentiment_old)")
 
     args = parser.parse_args()
 

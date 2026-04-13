@@ -116,12 +116,71 @@ def normalize_url(url: str) -> str:
     return normalized.lower()
 
 
-def decode_bytes(content: bytes) -> str:
-    for encoding in ["gb18030", "gbk", "gb2312", "utf-8"]:
-        try:
-            return content.decode(encoding)
-        except UnicodeDecodeError:
+_MOJIBAKE_HINT_RE = re.compile(r"(�|Ã|Â|â€|â€™|â€œ|â€“|â€”|ï¼|ï½|Ð|Ñ|å.|ç.|æ.)")
+_CJK_RE = re.compile(r"[\u4e00-\u9fff]")
+_PRIVATE_USE_RE = re.compile(r"[\ue000-\uf8ff]")
+
+
+def _extract_charset_hint(content: bytes) -> Optional[str]:
+    # Try to parse charset from HTML metadata in raw bytes.
+    head = content[:4096]
+    m = re.search(br"charset\s*=\s*['\"]?([a-zA-Z0-9_\-]+)", head, flags=re.IGNORECASE)
+    if not m:
+        return None
+    try:
+        return m.group(1).decode("ascii", errors="ignore").strip().lower() or None
+    except Exception:
+        return None
+
+
+def _decoded_text_score(text: str) -> float:
+    # Higher score means more likely correctly decoded Chinese news text.
+    if not text:
+        return -1e9
+
+    length = max(len(text), 1)
+    cjk = len(_CJK_RE.findall(text))
+    cjk_ratio = cjk / length
+    mojibake_hits = len(_MOJIBAKE_HINT_RE.findall(text))
+    replacement_hits = text.count("�")
+    private_use_hits = len(_PRIVATE_USE_RE.findall(text))
+
+    score = 0.0
+    score += cjk_ratio * 100.0
+    score += min(cjk, 200) * 0.05
+    score -= mojibake_hits * 3.0
+    score -= replacement_hits * 8.0
+    score -= private_use_hits * 4.0
+    return score
+
+
+def decode_bytes(content: bytes, charset_hint: Optional[str] = None) -> str:
+    candidates: List[str] = []
+
+    meta_hint = _extract_charset_hint(content)
+    for enc in [charset_hint, meta_hint, "utf-8", "utf-8-sig", "gb18030", "gbk", "gb2312"]:
+        if not enc:
             continue
+        enc_norm = enc.strip().lower()
+        if enc_norm and enc_norm not in candidates:
+            candidates.append(enc_norm)
+
+    best_text: Optional[str] = None
+    best_score = -1e18
+    for enc in candidates:
+        try:
+            text = content.decode(enc, errors="strict")
+        except Exception:
+            continue
+        score = _decoded_text_score(text)
+        if score > best_score:
+            best_score = score
+            best_text = text
+
+    if best_text is not None:
+        return best_text
+
+    # Ultimate fallback.
     return content.decode("utf-8", errors="replace")
 
 
@@ -280,7 +339,7 @@ class NewsContentScraper:
                             continue
 
                         content = await resp.read()
-                        text = decode_bytes(content)
+                        text = decode_bytes(content, charset_hint=resp.charset)
                         parsed = self.extract_article(
                             text,
                             url,

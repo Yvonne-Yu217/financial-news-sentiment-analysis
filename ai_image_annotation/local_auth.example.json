@@ -1,0 +1,9 @@
+{
+  "api_base_url": "https://ai.liaobots.work/v1",
+  "api_key": "PUT_YOUR_LOGIN_CODE_OR_API_KEY_HERE",
+  "models": [
+    "gpt-4o-mini",
+    "claude-sonnet-4-6",
+    "gemini-3-pro-preview"
+  ]
+}

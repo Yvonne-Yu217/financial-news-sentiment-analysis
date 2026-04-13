@@ -33,6 +33,18 @@ def parse_args():
     parser.add_argument("--data-dir", default="training_dataset", help="Dataset root directory")
     parser.add_argument("--artifacts-dir", default="run_artifacts/8vit_transferlearning", help="Output artifacts directory")
     parser.add_argument("--years", nargs="+", type=int, default=None, help="Compatibility field with scripts 1-7")
+    parser.add_argument(
+        "--twitter-consensus-only",
+        action="store_true",
+        default=True,
+        help="For Twitter_PCNN format, keep only images with unanimous sentiment votes",
+    )
+    parser.add_argument(
+        "--no-twitter-consensus-only",
+        dest="twitter_consensus_only",
+        action="store_false",
+        help="For Twitter_PCNN format, include non-unanimous labels by majority vote",
+    )
 
     parser.add_argument("--batch-size", type=int, default=12)
     parser.add_argument("--num-epochs", type=int, default=30)
@@ -150,16 +162,98 @@ def detect_device(device_arg: str):
     return torch.device("cpu")
 
 
-def load_samples(data_dir: Path):
+def load_samples(data_dir: Path, twitter_consensus_only: bool = True):
     classes = ["positive", "negative"]
     samples = []
     label_counts = {"positive": 0, "negative": 0}
     image_patterns = ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG"]
 
+    # Mode A: existing folder layout with positive/negative subfolders.
+    has_binary_subdirs = all((data_dir / class_name).exists() for class_name in classes)
+    if has_binary_subdirs:
+        for label, class_name in enumerate(classes):
+            class_dir = data_dir / class_name
+            for pattern in image_patterns:
+                for img in class_dir.glob(pattern):
+                    if img.name.startswith("._"):
+                        continue
+                    samples.append((str(img), label))
+                    label_counts[class_name] += 1
+
+        if not samples:
+            raise ValueError(f"No images found in {data_dir}")
+
+        logging.info("Found %d images", len(samples))
+        logging.info("Positive images (0): %d", label_counts["positive"])
+        logging.info("Negative images (1): %d", label_counts["negative"])
+        return samples, label_counts
+
+    # Mode B: Twitter_PCNN layout with `amt_result.csv` + image folder.
+    csv_path = data_dir / "amt_result.csv"
+    image_dir = data_dir / "Agg_AMT_Candidates"
+    if csv_path.exists() and image_dir.exists():
+        import csv as pycsv
+
+        with csv_path.open("r", encoding="utf-8") as f:
+            reader = pycsv.DictReader(f)
+            for row in reader:
+                img_name = str(row.get("img_name", "")).strip()
+                if not img_name:
+                    continue
+
+                try:
+                    neg_votes = int(float(row.get("# of votes for neg", 0) or 0))
+                    pos_votes = int(float(row.get("# of votes for pos", 0) or 0))
+                except Exception:
+                    continue
+
+                if twitter_consensus_only:
+                    if neg_votes == 5 and pos_votes == 0:
+                        label = 1
+                    elif pos_votes == 5 and neg_votes == 0:
+                        label = 0
+                    else:
+                        continue
+                else:
+                    if neg_votes > pos_votes:
+                        label = 1
+                    elif pos_votes > neg_votes:
+                        label = 0
+                    else:
+                        continue
+
+                img_path = image_dir / img_name
+                if not img_path.exists() or not img_path.is_file() or img_path.name.startswith("._"):
+                    continue
+
+                samples.append((str(img_path), label))
+                if label == 0:
+                    label_counts["positive"] += 1
+                else:
+                    label_counts["negative"] += 1
+
+        if not samples:
+            raise ValueError(
+                f"No usable labeled images found in Twitter_PCNN format under {data_dir}"
+            )
+
+        logging.info("Detected Twitter_PCNN format under %s", data_dir)
+        logging.info("Consensus only: %s", twitter_consensus_only)
+        logging.info("Found %d images", len(samples))
+        logging.info("Positive images (0): %d", label_counts["positive"])
+        logging.info("Negative images (1): %d", label_counts["negative"])
+        return samples, label_counts
+
+    # Neither supported format matched.
     for label, class_name in enumerate(classes):
         class_dir = data_dir / class_name
         if not class_dir.exists():
-            raise ValueError(f"Directory does not exist: {class_dir}")
+            raise ValueError(
+                "Unsupported dataset layout. Expected either: "
+                "(1) positive/negative subfolders, or "
+                "(2) Twitter_PCNN layout with amt_result.csv + Agg_AMT_Candidates. "
+                f"Missing: {class_dir}"
+            )
         for pattern in image_patterns:
             for img in class_dir.glob(pattern):
                 if img.name.startswith("._"):
@@ -420,7 +514,7 @@ def main():
     status.update({"phase": "loading_data", "last_updated": dt.datetime.now().isoformat()})
     atomic_write_json(status_path, status)
 
-    samples, label_counts = load_samples(data_dir)
+    samples, label_counts = load_samples(data_dir, twitter_consensus_only=args.twitter_consensus_only)
     train_samples, val_samples, test_samples = make_splits(samples, args.train_ratio, args.val_ratio, args.seed)
 
     train_transform, eval_transform = create_transforms()
@@ -608,7 +702,7 @@ def main():
         )
 
         if no_improve_epochs >= args.patience:
-            logging.info("Early stopping triggered after %d epochs without improvement", args.patience)
+            logging.info("Early stopping triggered afte第9r %d epochs without improvement", args.patience)
             break
 
     if not model_best_path.exists():

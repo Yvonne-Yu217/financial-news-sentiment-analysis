@@ -6,7 +6,9 @@ import time
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.image import imread
+from PIL import Image
 from pymongo import MongoClient
 
 
@@ -88,7 +90,23 @@ def pick_extremes(db, year, top_n, require_text_sentiment, candidate_pool, max_c
             if require_text_sentiment:
                 candidates = _filter_candidates_with_text_sentiment(db, year, candidates)
 
-            selected = [d for d in candidates if d.get("image_path")]
+            # Deduplicate by image_path within year candidates
+            seen_paths: set = set()
+            unique_candidates = []
+            for d in candidates:
+                path = d.get("image_path", "")
+                if not path:
+                    continue
+                p = Path(path)
+                # Skip missing, empty, or tiny placeholder files (< 1 KB)
+                if not p.exists() or not p.is_file() or p.stat().st_size < 1024:
+                    continue
+                if path in seen_paths:
+                    continue
+                seen_paths.add(path)
+                unique_candidates.append(d)
+
+            selected = unique_candidates
             if len(selected) >= top_n:
                 break
 
@@ -101,6 +119,51 @@ def pick_extremes(db, year, top_n, require_text_sentiment, candidate_pool, max_c
     most_negative = select_for_direction(-1)
     most_positive = select_for_direction(1)
     return most_negative, most_positive
+
+
+def _dhash_hex(image_path, hash_size=16):
+    img = Image.open(image_path).convert("L").resize((hash_size + 1, hash_size), Image.Resampling.LANCZOS)
+    arr = np.array(img)
+    diff = arr[:, 1:] > arr[:, :-1]
+    bits = "".join("1" if x else "0" for x in diff.flatten())
+    return hex(int(bits, 2))[2:].zfill((hash_size * hash_size) // 4)
+
+
+def _content_key(row, hash_cache):
+    image_path = str(row.get("image_path") or "")
+    if not image_path:
+        return ""
+    if image_path in hash_cache:
+        return hash_cache[image_path]
+
+    p = Path(image_path)
+    if not p.exists() or not p.is_file():
+        hash_cache[image_path] = image_path
+        return image_path
+
+    try:
+        digest = _dhash_hex(p)
+        hash_cache[image_path] = digest
+        return digest
+    except Exception:
+        hash_cache[image_path] = image_path
+        return image_path
+
+
+def dedup_rows(rows, top_n, hash_cache, pre_seen=None):
+    seen = set(pre_seen or [])
+    selected = []
+    for row in rows:
+        key = _content_key(row, hash_cache)
+        if not key:
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        selected.append(row)
+        if len(selected) >= top_n:
+            break
+    return selected, seen
 
 
 def draw_grid(negative_rows, positive_rows, cols, output_path):
@@ -175,8 +238,13 @@ def main():
         pos_all.extend(pos)
 
     # Global top-N from year-level candidates
-    neg_all = sorted(neg_all, key=lambda x: x["prob"], reverse=True)[: args.top_n]
-    pos_all = sorted(pos_all, key=lambda x: x["prob"])[: args.top_n]
+    neg_sorted = sorted(neg_all, key=lambda x: x["prob"], reverse=True)
+    pos_sorted = sorted(pos_all, key=lambda x: x["prob"])
+
+    # Deduplicate by image content hash to avoid repeated visuals in the collage.
+    hash_cache = {}
+    neg_all, seen_hashes = dedup_rows(neg_sorted, args.top_n, hash_cache)
+    pos_all, _ = dedup_rows(pos_sorted, args.top_n, hash_cache, pre_seen=seen_hashes)
 
     output_path = Path(args.output)
     if not output_path.is_absolute():

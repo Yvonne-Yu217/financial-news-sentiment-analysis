@@ -35,6 +35,7 @@ ENV/
 /images/
 /results/
 /plots/
+/run_artifacts/
 
 # Log files
 *.log
@@ -73,6 +74,8 @@ logs/
 .env.development.local
 .env.test.local
 .env.production.local
+ai_image_annotation/local_auth.json
+ai_image_annotation/*.local.json
 
 # Downloaded datasets
 datasets/
@@ -82,8 +85,18 @@ failed_downloads*.json
 temp/
 tmp/
 
+# AI annotation outputs
+ai_image_annotation/run_artifacts/
+
 # History files
 .history/
 
 # Database
 *.sqlite3
+
+# Large local directories (not for git)
+/training_dataset/
+/training_dataset_tuned/
+/backups/
+overleaf_upload*.zip
+*_executed.ipynb
