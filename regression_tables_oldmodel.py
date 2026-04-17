@@ -406,6 +406,92 @@ def run_joint_interaction(df):
 # ─────────────────────────────────────────────────────────────────────────────
 # §4.4 条件分析（Table 5）
 # ─────────────────────────────────────────────────────────────────────────────
+def _run_panel_regression(sub_df, df_full):
+    """Run joint regression on a subsample, return row_data dict per index."""
+    row_data = {}
+    for idx_name in FIVE_INDICES:
+        ret_col = f"{idx_name}_log_returns"
+        if ret_col not in sub_df.columns:
+            row_data[idx_name] = {}
+            continue
+        extra = {}
+        ts_col = "TextPes_std"
+        sub = sub_df.copy()
+        for lag in range(1, N_LAGS+1):
+            k = f"{ts_col}_lag{lag}"
+            if k not in sub.columns:
+                sub[k] = sub[ts_col].shift(lag)
+            extra[f"text_lag{lag}"] = sub[k]
+        for sub_suf in ["_std_lag3", "_lag3"]:
+            pk = f"PhotoPes{sub_suf}"
+            tk = f"TextPes{sub_suf}"
+            if pk in sub.columns and tk in sub.columns:
+                sub["inter_t3"] = sub[pk] * sub[tk]
+                break
+        if "inter_t3" not in sub.columns:
+            sub["inter_t3"] = np.nan
+        extra["inter_t3"] = sub["inter_t3"]
+        try:
+            X, y = build_X(sub, "PhotoPes", idx_name, extra_cols=extra)
+            if len(y) < 30:
+                row_data[idx_name] = {}
+                continue
+            model = run_ols(X, y)
+            coefs_p, tstats_p, pvals_p = extract_lags(model, "sent_lag")
+            coefs_t, tstats_t, pvals_t = extract_lags(model, "text_lag")
+            ic = model.params.get("inter_t3", np.nan)
+            it = model.tvalues.get("inter_t3", np.nan)
+            ip = model.pvalues.get("inter_t3", np.nan)
+            row_data[idx_name] = {
+                "photo": (coefs_p, tstats_p, pvals_p),
+                "text":  (coefs_t, tstats_t, pvals_t),
+                "inter": (ic, it, ip),
+                "r2": model.rsquared, "n": int(model.nobs)
+            }
+        except Exception:
+            row_data[idx_name] = {}
+    return row_data
+
+
+def _panel_to_csv_rows(row_data, panel_label):
+    """Convert row_data to list of (row_label, values) for CSV output."""
+    rows = []
+    rows.append((panel_label, [""] * 5))
+    for src, src_lbl in [("photo", "PhotoPes"), ("text", "TextPes")]:
+        for lag_num in range(1, N_LAGS + 1):
+            cr, tr = [], []
+            for idx_name in FIVE_INDICES:
+                d = row_data.get(idx_name, {})
+                if not d or src not in d:
+                    cr.append("—"); tr.append("—"); continue
+                c = d[src][0][lag_num - 1]
+                t = d[src][1][lag_num - 1]
+                p = d[src][2][lag_num - 1]
+                cr.append(f"{c:.4f}{sig_stars(p)}" if not np.isnan(c) else "—")
+                tr.append(f"({t:.2f})" if not np.isnan(t) else "—")
+            rows.append((f"{src_lbl}_t-{lag_num}", cr))
+            rows.append(("", tr))
+    # Interaction
+    ic_r, it_r = [], []
+    for idx_name in FIVE_INDICES:
+        d = row_data.get(idx_name, {})
+        if not d or "inter" not in d:
+            ic_r.append("—"); it_r.append("—"); continue
+        ic, it, ip = d["inter"]
+        ic_r.append(f"{ic:.4f}{sig_stars(ip)}" if not np.isnan(ic) else "—")
+        it_r.append(f"({it:.2f})" if not np.isnan(it) else "—")
+    rows.append(("(Photo×Text)_t-3", ic_r))
+    rows.append(("", it_r))
+    rows.append(("---", []))
+    r2_r = [f"{row_data[i]['r2']:.4f}" if row_data.get(i) and "r2" in row_data[i] else "—"
+            for i in FIVE_INDICES]
+    n_r = [str(row_data[i]["n"]) if row_data.get(i) and "n" in row_data[i] else "—"
+           for i in FIVE_INDICES]
+    rows.append(("R²", r2_r))
+    rows.append(("N", n_r))
+    return rows
+
+
 def run_conditional_analysis(df):
     title = "Table 5 — Conditional Impact of PhotoPes and TextPes (2014–2026)"
     print(f"\n{'#'*60}\n  {title}\n{'#'*60}")
@@ -419,85 +505,11 @@ def run_conditional_analysis(df):
     print(f"  极端期行数: {len(df_ext)}  |  非极端期行数: {len(df_norm)}")
     print(f"  极端期阈值: [{threshold_lo:.4f}, {threshold_hi:.4f}]")
 
+    all_csv_rows = []
     for panel_label, sub_df in [("Panel A: Extreme PhotoPes (E=1)", df_ext),
                                  ("Panel B: Non-Extreme PhotoPes (E=0)", df_norm)]:
         print(f"\n  {panel_label}")
-        all_rows = []
-        for idx_name in FIVE_INDICES:
-            ret_col = f"{idx_name}_log_returns"
-            if ret_col not in sub_df.columns:
-                continue
-            # 联合回归（和 §4.3 相同结构）
-            ps_col = "PhotoPes_std"
-            ts_col = "TextPes_std"
-            extra = {}
-            for lag in range(1, N_LAGS+1):
-                k = f"{ts_col}_lag{lag}"
-                if k not in sub_df.columns:
-                    sub_df[k] = sub_df[ts_col].shift(lag)
-                extra[f"text_lag{lag}"] = sub_df[k]
-            for sub_suf in ["_std_lag3", "_lag3"]:
-                pk = f"PhotoPes{sub_suf}"
-                tk = f"TextPes{sub_suf}"
-                if pk in sub_df.columns and tk in sub_df.columns:
-                    sub_df["inter_t3"] = sub_df[pk] * sub_df[tk]
-                    break
-            if "inter_t3" not in sub_df.columns:
-                sub_df["inter_t3"] = np.nan
-            extra["inter_t3"] = sub_df["inter_t3"]
-
-            try:
-                X, y = build_X(sub_df, "PhotoPes", idx_name, extra_cols=extra)
-                if len(y) < 30:
-                    continue
-                model = run_ols(X, y)
-            except Exception as e:
-                print(f"    {idx_name} 回归失败: {e}")
-                continue
-
-        # Simplified output — just show key coefficients for each index
-        row_data = {}
-        for idx_name in FIVE_INDICES:
-            ret_col = f"{idx_name}_log_returns"
-            if ret_col not in sub_df.columns:
-                row_data[idx_name] = {}
-                continue
-            extra = {}
-            ts_col = "TextPes_std"
-            for lag in range(1, N_LAGS+1):
-                k = f"{ts_col}_lag{lag}"
-                if k not in sub_df.columns:
-                    sub_df = sub_df.copy()
-                    sub_df[k] = sub_df[ts_col].shift(lag)
-                extra[f"text_lag{lag}"] = sub_df[k]
-            for sub_suf in ["_std_lag3", "_lag3"]:
-                pk = f"PhotoPes{sub_suf}"
-                tk = f"TextPes{sub_suf}"
-                if pk in sub_df.columns and tk in sub_df.columns:
-                    sub_df = sub_df.copy()
-                    sub_df["inter_t3"] = sub_df[pk] * sub_df[tk]
-                    break
-            if "inter_t3" not in sub_df.columns:
-                sub_df = sub_df.copy()
-                sub_df["inter_t3"] = np.nan
-            extra["inter_t3"] = sub_df["inter_t3"]
-            try:
-                X, y = build_X(sub_df, "PhotoPes", idx_name, extra_cols=extra)
-                if len(y) < 30: row_data[idx_name] = {}; continue
-                model = run_ols(X, y)
-                coefs_p, tstats_p, pvals_p = extract_lags(model, "sent_lag")
-                coefs_t, tstats_t, pvals_t = extract_lags(model, "text_lag")
-                ic = model.params.get("inter_t3", np.nan)
-                it = model.tvalues.get("inter_t3", np.nan)
-                ip = model.pvalues.get("inter_t3", np.nan)
-                row_data[idx_name] = {
-                    "photo": (coefs_p, tstats_p, pvals_p),
-                    "text":  (coefs_t, tstats_t, pvals_t),
-                    "inter": (ic, it, ip),
-                    "r2": model.rsquared, "n": int(model.nobs)
-                }
-            except Exception:
-                row_data[idx_name] = {}
+        row_data = _run_panel_regression(sub_df, df)
 
         # Print condensed
         print(f"\n  {'Indicator':<26}" + "".join(f"{c:>14}" for c in COL_HEADERS))
@@ -538,6 +550,11 @@ def run_conditional_analysis(df):
         print(f"  {'R²':<26}" + "".join(f"{v:>14}" for v in r2_r))
         print(f"  {'N':<26}" + "".join(f"{v:>14}" for v in n_r))
 
+        # Collect CSV rows
+        all_csv_rows.extend(_panel_to_csv_rows(row_data, panel_label))
+        all_csv_rows.append(("---", []))
+
+    save_table_csv("table5_conditional", all_csv_rows, COL_HEADERS)
     print()
 
 

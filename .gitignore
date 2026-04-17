@@ -31,11 +31,13 @@ ENV/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Data directories
+# Data directories (exclude large data, keep paper/ figures)
 /images/
 /results/
 /plots/
 /run_artifacts/
+# Allow paper figures
+!paper/figures/
 
 # Log files
 *.log
