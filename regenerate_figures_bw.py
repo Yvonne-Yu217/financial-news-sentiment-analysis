@@ -98,18 +98,19 @@ def fig_monthly_sentiment():
     ax.plot(avg.index, avg['TextPes'],  color='black', linestyle='--',
             linewidth=1.4, label='TextPes (Text Pessimism)')
 
-    # Annotate major events with subtle vertical shading
+    # Annotate major events with subtle vertical shading; place labels near top to avoid x-axis overlap
     events = [
-        ('2015-06-01', '2015-09-01', '2015\nCrash'),
-        ('2018-01-01', '2018-12-31', '2018\nTrade War'),
+        ('2015-06-01', '2015-09-01', '2015 Crash'),
+        ('2018-01-01', '2018-12-31', '2018 Trade War'),
         ('2020-01-01', '2020-06-30', 'COVID-19'),
     ]
+    ylims = (0.05, 0.32)
+    ax.set_ylim(*ylims)
     for start, end, label in events:
         ax.axvspan(pd.Timestamp(start), pd.Timestamp(end),
                    alpha=0.10, color='gray', linewidth=0)
         mid = pd.Timestamp(start) + (pd.Timestamp(end) - pd.Timestamp(start)) / 2
-        ymax = ax.get_ylim()[1] if ax.get_ylim()[1] != 0 else 0.30
-        ax.text(mid, 0.005, label, ha='center', va='bottom',
+        ax.text(mid, ylims[1] - 0.01, label, ha='center', va='top',
                 fontsize=7, color='gray', style='italic')
 
     ax.set_xlabel('Date')

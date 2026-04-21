@@ -415,21 +415,19 @@ N & 2978 & 2978 & 2978 & 2978 & 2978 \\
 % SUBSECTION: Photo Sentiment, Text Sentiment, and Their Interaction Effect
 %--------------------------------------------------------------------------
 \subsection{Photo Sentiment, Text Sentiment, and Their Interaction Effect}
-To further investigate the joint impact of the photo sentiment and text sentiment indicators, this paper constructs an extended model that includes both sentiment indicators and their interaction term:
-\begin{align}
-R_t = &\beta_1 L5(\text{PhotoPes}_t) + \beta_2 L5(\text{TextPes}_t) + \beta_3(\text{PhotoPes} \times \text{TextPes})_{t-3} \notag \\
-&+ \beta_4 L5(R_t) + \beta_5 L5(R^2_t) + \beta_6 X_t + \epsilon_t
-\end{align}
-where $(\text{PhotoPes} \times \text{TextPes})_{t-3}$ represents the interaction term between the photo and text pessimistic sentiment indicators at lag $t-3$.
+To further investigate the joint impact of the photo sentiment and text sentiment indicators, this paper constructs an extended model that includes both sentiment indicators simultaneously:
+\begin{equation}
+R_t = \beta_1 L5(\text{PhotoPes}_t) + \beta_2 L5(\text{TextPes}_t) + \beta_3 L5(R_t) + \beta_4 L5(R^2_t) + \beta_5 X_t + \epsilon_t
+\end{equation}
 
 Table \ref{tab:sentiment_interaction_results} shows the regression results for the 2014--2026 sample period. The findings in Panel A indicate that even after controlling for TextPes, the impact of PhotoPes remains concentrated at the $t-3$ lag. Specifically, $\text{PhotoPes}_{t-3}$ continues to exhibit a significant negative predictive effect on market returns for the ChiNext index (at the 5\% level), while the effects for SZCOMP and CSI 500 remain directionally consistent but below conventional significance thresholds in the joint specification. This consistency suggests that the photo sentiment indicator captures market sentiment information that is at least partially distinct from textual content.
 
-The text-based pessimistic sentiment indicator (TextPes) in Panel B shows a negative predictive pattern at $t-3$ that is directionally consistent across all indices. The interaction term results in Panel C, while mostly negative, are not statistically significant at conventional levels, suggesting that the individual contributions of image and text sentiment can be considered largely independent in this extended sample.
+The text-based pessimistic sentiment indicator (TextPes) in Panel B shows a negative predictive pattern at $t-3$ that is directionally consistent across all indices. We also estimated a version of this model that additionally includes a $(\text{PhotoPes} \times \text{TextPes})_{t-3}$ interaction term; the interaction coefficient was insignificant at conventional levels across all five indices (untabulated), which supports the view that the contributions of image and text sentiment are largely independent in this sample.
 
 The overall picture from the joint regression reinforces the conclusion that image sentiment---captured through the ViT-based PhotoPes indicator---provides incremental predictive content for Chinese stock market returns beyond what is captured by text sentiment alone.
 
 \begin{table}[h!]
-    \caption{PhotoPes, TextPes and Their Interaction Effect on Market Returns (2014--2026)}
+    \caption{Joint Effect of PhotoPes and TextPes on Market Returns (2014--2026)}
     \label{tab:sentiment_interaction_results}
     \centering
     \small
@@ -440,36 +438,31 @@ The overall picture from the joint regression reinforces the conclusion that ima
     \multicolumn{6}{l}{\textit{Panel A: Photo Sentiment Indicator (PhotoPes)}} \\
     \midrule
     PhotoPes$_{t-1}$ & 0.0000 & 0.0001 & 0.0003 & 0.0001 & 0.0003 \\
-     & (0.12) & (0.44) & (0.85) & (0.28) & (0.79) \\
+     & (0.11) & (0.42) & (0.81) & (0.26) & (0.75) \\
     PhotoPes$_{t-2}$ & 0.0002 & 0.0003 & 0.0005 & 0.0007 & 0.0005 \\
-     & (0.87) & (1.11) & (1.46) & (1.49) & (1.39) \\
+     & (0.87) & (1.11) & (1.45) & (1.49) & (1.38) \\
     PhotoPes$_{t-3}$ & -0.0005 & -0.0003 & -0.0006 & -0.0012** & -0.0006 \\
-     & (-1.42) & (-1.03) & (-1.57) & (-2.50) & (-1.43) \\
+     & (-1.43) & (-1.05) & (-1.59) & (-2.52) & (-1.45) \\
     PhotoPes$_{t-4}$ & -0.0003 & -0.0004 & -0.0006* & -0.0006 & -0.0006 \\
-     & (-1.04) & (-1.36) & (-1.66) & (-1.43) & (-1.51) \\
+     & (-1.05) & (-1.38) & (-1.67) & (-1.44) & (-1.52) \\
     PhotoPes$_{t-5}$ & 0.0003 & 0.0002 & 0.0004 & 0.0007* & 0.0004 \\
-     & (1.12) & (0.72) & (1.10) & (1.70) & (1.17) \\
+     & (1.13) & (0.72) & (1.11) & (1.71) & (1.18) \\
     \midrule
     \multicolumn{6}{l}{\textit{Panel B: Text Sentiment Indicator (TextPes)}} \\
     \midrule
-    TextPes$_{t-1}$ & -0.0003 & -0.0003 & -0.0004 & -0.0002 & -0.0004 \\
-     & (-0.88) & (-1.16) & (-1.17) & (-0.36) & (-1.11) \\
+    TextPes$_{t-1}$ & -0.0003 & -0.0003 & -0.0004 & -0.0001 & -0.0004 \\
+     & (-0.86) & (-1.12) & (-1.10) & (-0.32) & (-1.03) \\
     TextPes$_{t-2}$ & -0.0001 & -0.0001 & -0.0003 & -0.0006 & -0.0002 \\
-     & (-0.29) & (-0.50) & (-0.77) & (-1.39) & (-0.57) \\
+     & (-0.29) & (-0.52) & (-0.79) & (-1.41) & (-0.59) \\
     TextPes$_{t-3}$ & -0.0002 & -0.0002 & -0.0005 & -0.0006 & -0.0004 \\
-     & (-0.53) & (-0.82) & (-1.43) & (-1.37) & (-1.24) \\
+     & (-0.55) & (-0.86) & (-1.51) & (-1.42) & (-1.31) \\
     TextPes$_{t-4}$ & 0.0003 & 0.0003 & 0.0005 & 0.0005 & 0.0004 \\
      & (0.79) & (0.93) & (1.20) & (1.03) & (1.02) \\
-    TextPes$_{t-5}$ & 0.0003 & 0.0003 & 0.0002 & 0.0003 & 0.0000 \\
-     & (1.01) & (0.90) & (0.57) & (0.54) & (0.10) \\
+    TextPes$_{t-5}$ & 0.0003 & 0.0003 & 0.0002 & 0.0003 & 0.0001 \\
+     & (1.03) & (0.93) & (0.63) & (0.58) & (0.16) \\
     \midrule
-    \multicolumn{6}{l}{\textit{Panel C: Interaction Effect and Model Statistics}} \\
-    \midrule
-    (PhotoPes $\times$ TextPes)$_{t-3}$ & -0.0001 & -0.0002 & -0.0003 & -0.0002 & -0.0003 \\
-     & (-0.38) & (-0.76) & (-1.20) & (-0.67) & (-1.23) \\
-    \midrule
-    R² & 0.0163 & 0.0168 & 0.0177 & 0.0170 & 0.0178 \\
-    Adj R² & 0.0079 & 0.0085 & 0.0094 & 0.0087 & 0.0095 \\
+    R² & 0.0162 & 0.0166 & 0.0173 & 0.0169 & 0.0173 \\
+    Adj R² & 0.0082 & 0.0087 & 0.0093 & 0.0089 & 0.0093 \\
     N & 2978 & 2978 & 2978 & 2978 & 2978 \\
     \bottomrule
     \end{tabular}
@@ -485,9 +478,9 @@ The overall picture from the joint regression reinforces the conclusion that ima
 \subsection{Conditional Analysis: Market Volatility States}
 Table \ref{tab:sentiment_significant_periods} examines whether the predictive power of sentiment indicators depends on market conditions by splitting the sample into high- and low-volatility states. The volatility state is defined by the 20-day rolling standard deviation of SHCOMP log returns: periods in the top 25th percentile (annualized vol $> 19.6\%$) constitute the high-volatility regime (Panel A, N=741), while the remaining 75\% form the low-volatility regime (Panel B, N=2,237).
 
-Panel A reveals that during high-volatility periods, both $\text{PhotoPes}_{t-3}$ and $\text{TextPes}_{t-3}$ exhibit significant negative predictive power. $\text{PhotoPes}_{t-3}$ is significant for the SZSE Composite (10\% level), ChiNext (5\% level), and CSI 500 (10\% level), while $\text{TextPes}_{t-3}$ is significant for SZSE Composite, ChiNext, and CSI 500 (all at the 5\% level). The coefficient magnitude of $\text{PhotoPes}_{t-3}$ is approximately four times larger in high-volatility periods ($-$0.0033 for ChiNext) than the full-sample estimate ($-$0.0012, Table~\ref{tab:PhotoPes_regression_results}), indicating a strong amplification of image-sentiment effects under market stress. The $R^2$ values are also substantially higher (0.039--0.055) than the full-sample regression (0.016--0.021), confirming that the model's explanatory power is concentrated in volatile market conditions.
+Panel A reveals that during high-volatility periods, both $\text{PhotoPes}_{t-3}$ and $\text{TextPes}_{t-3}$ exhibit significant negative predictive power. $\text{PhotoPes}_{t-3}$ is significant for the SZSE Composite (10\% level), ChiNext (5\% level), and CSI 500 (10\% level), while $\text{TextPes}_{t-3}$ is significant for SZSE Composite, ChiNext, and CSI 500 (all at the 5\% level). The coefficient magnitude of $\text{PhotoPes}_{t-3}$ is approximately 2.5 times larger in high-volatility periods ($-$0.0033 for ChiNext) than the full-sample estimate ($-$0.0013, Table~\ref{tab:PhotoPes_regression_results}), indicating a strong amplification of image-sentiment effects under market stress. The $R^2$ values are also substantially higher (0.038--0.055) than the full-sample joint regression (0.016--0.018, Table~\ref{tab:sentiment_interaction_results}), confirming that the model's explanatory power is concentrated in volatile market conditions.
 
-Panel B shows that neither sentiment indicator is significant at any lag during low-volatility periods. This sharp contrast confirms that the full-sample predictive effects documented in Tables~\ref{tab:PhotoPes_regression_results} and \ref{tab:TextPes_regression_results} are driven by high-stress market episodes rather than being uniformly distributed across time.
+Panel B shows that, with the sole exception of a marginal $\text{TextPes}_{t-4}$ effect on SZCOMP (10\% level), neither sentiment indicator is significant at any lag during low-volatility periods. This sharp contrast confirms that the full-sample predictive effects documented in Tables~\ref{tab:PhotoPes_regression_results} and \ref{tab:TextPes_regression_results} are driven by high-stress market episodes rather than being uniformly distributed across time.
 
 This state-dependent pattern is consistent with the behavioral finance literature. \citet{loewenstein2001risk} argue that emotional processing dominates cognitive processing under stress, causing investors to react more strongly to vivid, emotionally charged stimuli such as news images. \citet{baker2007investor} further show that sentiment effects are amplified when arbitrage is most costly---precisely the high-volatility states identified here. The simultaneous significance of both $\text{PhotoPes}_{t-3}$ and $\text{TextPes}_{t-3}$ during turbulent periods suggests that image and text sentiment jointly amplify investor overreaction, with the return impact materializing three trading days after the initial media signal.
 
@@ -632,7 +625,7 @@ To further validate the effectiveness of the strategy, this paper conducted a Fa
 % SUBSECTION: Out-of-Sample Predictive Analysis
 %--------------------------------------------------------------------------
 \subsection{Out-of-Sample Predictive Analysis}
-This paper employs an expanding-window method for out-of-sample (OOS) predictive analysis to evaluate the predictive ability of sentiment indicators on the returns of Chinese stock market indices. Following the return predictability literature \citep{campbell2008predicting}, the analysis uses an initial estimation window of 1,512 trading days (approximately six years, covering January 2014 to March 2020) that expands forward one day at a time, yielding 1,469 OOS predictions for each index over the period March 2020 to April 2026. The six-year initial window ensures that the model is trained on a sufficiently diverse set of market conditions---including the 2015 stock market crash, the 2018 trade tensions, and the onset of the COVID-19 pandemic---before generating out-of-sample forecasts. The prediction model uses Ridge regression with a regularization parameter $\alpha = 500$, with standardized $\textit{PhotoPes}$ at lags 3, 4, and 5 as predictors. This multi-lag specification is motivated by the in-sample evidence (Table~\ref{tab:PhotoPes_regression_results}) that both $\textit{PhotoPes}_{t-3}$ and $\textit{PhotoPes}_{t-4}$ carry negative predictive information, suggesting that sentiment effects diffuse into prices gradually over several trading days. Ridge regularization penalizes the additional coefficients and prevents overfitting, effectively trading off bias for reduced variance in the forecasts \citep{campbell2008predicting}.
+This paper employs an expanding-window method for out-of-sample (OOS) predictive analysis to evaluate the predictive ability of sentiment indicators on the returns of Chinese stock market indices. Following the return predictability literature \citep{campbell2008predicting}, the analysis uses an initial estimation window of 1,512 trading days (approximately six years, covering January 2014 to March 2020) that expands forward one day at a time, yielding 1,467 OOS predictions for each index over the period March 2020 to April 2026. The six-year initial window ensures that the model is trained on a sufficiently diverse set of market conditions---including the 2015 stock market crash, the 2018 trade tensions, and the onset of the COVID-19 pandemic---before generating out-of-sample forecasts. The prediction model uses Ridge regression with a regularization parameter $\alpha = 500$, with standardized $\textit{PhotoPes}$ at lags 3, 4, and 5 as predictors. This multi-lag specification is motivated by the in-sample evidence (Table~\ref{tab:PhotoPes_regression_results}) that both $\textit{PhotoPes}_{t-3}$ and $\textit{PhotoPes}_{t-4}$ carry negative predictive information, suggesting that sentiment effects diffuse into prices gradually over several trading days. Ridge regularization penalizes the additional coefficients and prevents overfitting, effectively trading off bias for reduced variance in the forecasts \citep{campbell2008predicting}.
 
 To assess predictive performance, this paper uses the out-of-sample R-squared ($R^2_{OOS}$) proposed by \citet{campbell2008predicting} and the MSPE-adjusted test statistic proposed by \citet{clark2007approximately}:
 \begin{equation}

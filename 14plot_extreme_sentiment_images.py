@@ -23,6 +23,8 @@ def parse_args():
     p.add_argument("--candidate-pool", type=int, default=3000, help="Initial per-year DB candidate pool size")
     p.add_argument("--max-candidate-pool", type=int, default=50000, help="Max per-year pool size when filtering")
     p.add_argument("--output", default="results/extreme_sentiment_images.png")
+    p.add_argument("--collection-suffix", default="_old",
+                   help="Suffix for sentiment collections (e.g. '_old' reads {year}_sentiment_old)")
     p.add_argument(
         "--require-text-sentiment",
         action="store_true",
@@ -65,8 +67,8 @@ def _filter_candidates_with_text_sentiment(db, year, candidates):
     return [d for d in candidates if d.get("original_id") in allowed]
 
 
-def pick_extremes(db, year, top_n, require_text_sentiment, candidate_pool, max_candidate_pool):
-    sentiment_col_name = f"{year}_sentiment"
+def pick_extremes(db, year, top_n, require_text_sentiment, candidate_pool, max_candidate_pool, collection_suffix=""):
+    sentiment_col_name = f"{year}_sentiment{collection_suffix}"
     if sentiment_col_name not in db.list_collection_names():
         return [], []
 
@@ -150,16 +152,38 @@ def _content_key(row, hash_cache):
         return image_path
 
 
-def dedup_rows(rows, top_n, hash_cache, pre_seen=None):
+def _hamming(a, b):
+    """Hamming distance between two equal-length hex strings (-1 if incompatible)."""
+    if len(a) != len(b):
+        return -1
+    try:
+        return bin(int(a, 16) ^ int(b, 16)).count("1")
+    except ValueError:
+        return -1
+
+
+def dedup_rows(rows, top_n, hash_cache, pre_seen=None, hamming_threshold=12):
+    """Deduplicate rows by perceptual hash: reject if Hamming distance <= threshold
+    to any previously-kept hash. Non-hash keys (image_paths for unreadable files)
+    still use exact-match dedup."""
     seen = set(pre_seen or [])
+    seen_hex = [k for k in seen if all(c in "0123456789abcdef" for c in k)]
     selected = []
     for row in rows:
         key = _content_key(row, hash_cache)
         if not key:
             continue
-        if key in seen:
-            continue
-        seen.add(key)
+        is_hex = all(c in "0123456789abcdef" for c in key)
+        if is_hex:
+            too_close = any(0 <= _hamming(key, k) <= hamming_threshold for k in seen_hex)
+            if too_close:
+                continue
+            seen.add(key)
+            seen_hex.append(key)
+        else:
+            if key in seen:
+                continue
+            seen.add(key)
         selected.append(row)
         if len(selected) >= top_n:
             break
@@ -233,6 +257,7 @@ def main():
             args.require_text_sentiment,
             args.candidate_pool,
             args.max_candidate_pool,
+            collection_suffix=args.collection_suffix,
         )
         neg_all.extend(neg)
         pos_all.extend(pos)
