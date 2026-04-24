@@ -43,6 +43,18 @@ ENV/
 *.log
 logs/
 
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
 # macOS specific files
 .DS_Store
 ._*
