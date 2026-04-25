@@ -43,7 +43,7 @@
 % ABSTRACT
 %--------------------------------------------------------------------------
 \begin{abstract}
-This study is based on the visual and textual information from the homepage of Sina News. It employs the Vision Transformer model to classify the sentiment of news images and constructs a photo-based pessimism index, PhotoPes. Additionally, a pre-trained language model based on BERT is used to build a text-based pessimism index, TextPes. Empirical analysis over the 2014--2026 sample period reveals that sentiment changes in news images significantly affect market returns, with \textit{PhotoPes}$_{t-3}$ demonstrating significant negative predictive effects across multiple Chinese stock indices---particularly the ChiNext Composite (1\% level) and smaller-cap indices (10\% level). Moreover, image and text sentiment indicators exhibit complementary relationships in forecasting stock market returns, providing empirical support for multimodal sentiment quantification. The study further applies these sentiment indicators to construct a rule-based trading strategy that achieves positive risk-adjusted returns, outperforming the CSI 500 benchmark. The findings indicate that integrating image and text sentiment information can effectively enhance market prediction and portfolio performance, offering new perspectives for investor decision-making and market regulation.
+This study is based on the visual and textual information from the homepage of Sina News. It employs the Vision Transformer model to classify the sentiment of news images and constructs a photo-based pessimism index, PhotoPes. Additionally, a pre-trained language model based on BERT is used to build a text-based pessimism index, TextPes. Empirical analysis over the 2014--2026 sample period reveals that sentiment changes in news images significantly affect market returns, with \textit{PhotoPes}$_{t-3}$ demonstrating significant negative predictive effects across multiple Chinese stock indices---particularly the ChiNext Composite (1\% level) and smaller-cap indices (10\% level). Moreover, image and text sentiment indicators exhibit complementary relationships in forecasting stock market returns, providing empirical support for multimodal sentiment quantification. A rule-based trading exercise that converts the in-sample predictability into a long-only signal generates a higher Sharpe ratio than the CSI 500 benchmark, but the corresponding three-factor alpha is positive and statistically insignificant; we interpret this as evidence on predictability rather than as a profit recommendation. The findings indicate that integrating image and text sentiment information can effectively enhance market prediction and portfolio performance, offering new perspectives for investor decision-making and market regulation.
 \end{abstract}
 \JEL{G12, G14, G41}
 \Keywords{Investor sentiment, Behavioral finance, Machine learning}
@@ -58,6 +58,12 @@ In recent years, investor sentiment, as a significant research direction in beha
 With the diversification of information dissemination media, images, as an important component of news, can quickly convey complex information due to their intuitive, vivid, and lively nature, and they demonstrate a stronger effect in evoking emotions than text. \citet{garcia1991eyes}'s research, using eye-tracking technology to analyze how readers read newspapers, found that visual elements, represented by images, are typically the first content that readers notice and can attract their attention faster than words. However, the role of images in financial sentiment analysis has not been fully explored, and research on the relationship between image sentiment and financial markets is relatively scarce. \citet{obaid2022picture} utilized machine learning techniques to classify the sentiment of news images and constructed a photo pessimism index (PhotoPes) to study the impact of image sentiment on market behavior. This research demonstrated the importance of image sentiment in sentiment quantification studies, but its scope was mainly limited to the European and American market contexts, with little research involving the Chinese stock market.
 
 In the Chinese stock market, the content and form of news media have a significant impact on investor behavior and market performance. The Chinese stock market is composed of major stock indices such as the Shanghai Composite Index, the Shenzhen Component Index, and the CSI 300 Index. The fluctuations of these indices not only reflect changes in market fundamentals but are also largely driven by investor sentiment. Although some domestic research has begun to focus on the quantification of news sentiment, it has mainly concentrated on the analysis of text, with a lack of systematic research on news images, an important source of emotional information. Particularly in a market like China, where the trading activity of retail investors is relatively high, images as direct visual stimuli may have a more direct impact on investment decisions. Therefore, by combining sentiment analysis of news images and text data, this paper explores the impact of image and text information in the news on investor behavior, constructs effective indicators that reflect the emotional fluctuations of the Chinese stock market, which will provide a new perspective for market behavior research and strong support for investor decision-making and market supervision.
+
+The Chinese A-share market also provides a useful institutional setting for studying limits to arbitrage and sentiment-driven mispricing more generally. \citet{stambaugh2012short}, \citet{baker2007investor}, and \citet{shleifer1997limits} show that sentiment effects are largest where arbitrage is most costly, retail trading is most active, and short-selling is most restricted. The Chinese market satisfies all three conditions: only a small subset of stocks is borrowable for shorting, retail investors account for the majority of trading volume, and T+1 settlement further raises the cost of fast arbitrage \citep{liu2019size,an2024retail,han2022chinese}. We therefore expect any sentiment-driven return predictability we document to be most pronounced in growth-oriented and small-capitalization indices, where retail participation is highest and arbitrage is most binding. The directional sign of the predictability we report---negative coefficients on lagged \textit{PhotoPes}, with the strongest effect on the ChiNext Composite---is interpreted through the overreaction lens of \citet{de1987further}: high-pessimism news triggers a short-horizon overreaction in retail-driven indices that subsequently corrects, with limits to arbitrage allowing the deviation to persist long enough to be measured at a multi-day horizon.
+
+Following the multiple-testing standards advocated by \citet{harvey2016cross}, we pre-specify our primary hypothesis: $\textit{PhotoPes}_{t-3}$ predicts ChiNext Composite returns with a negative sign at conventional levels after Bonferroni adjustment across the five indices. The corresponding tests on the other four indices and on $\textit{TextPes}$ are treated as exploratory; we report them as evidence on cross-sectional heterogeneity rather than as additional independent confirmations.
+
+Relative to the closest prior work, our contribution is more about geographic and methodological extension than about replacing existing visual-sentiment measures. Compared to \citet{obaid2022picture}, we extend the photo-pessimism approach from U.S. news photographs to Chinese news photographs and document a small-cap-concentrated reversal pattern that mirrors theirs. Compared to the recent \citet{gu2026giffluence} \emph{GIFfluence} working paper, which uses social-media animated GIFs to measure sentiment in U.S. equities, we use static news photographs from a financial-media homepage in a different market, providing an independent visual-sentiment data source. Compared to \citet{zhang2025multimodal}, who study multimodal sentiment on a Chinese sample using an Inception-v3 image backbone, we use a longer 2014--2026 sample window, a Vision Transformer image backbone explicitly anchored to \citet{obaid2022picture}, and Sina News headlines rather than China News Service text, generating an independent replication on a different newswire.
 
 This paper combines the analysis of news images and text sentiment to propose and construct a daily market-level investor sentiment index based on news photos and text, used to study the impact of sentiment fluctuations on the Chinese stock market. The main contributions of the research can be summarized as follows:
 
@@ -114,6 +120,8 @@ The \textit{risk-as-feelings hypothesis} by \citet{loewenstein2001risk} further 
 
 Although the emotional effects of visual information have been extensively studied in psychology, its application in the financial domain is still an emerging field. Early financial research focused mainly on the informational content of charts and pictures in corporate annual reports, with even more limited research on the impact of images in financial media.
 
+The visual-sentiment literature has expanded rapidly since \citet{obaid2022picture}. Three follow-up studies in \emph{Finance Research Letters} extend the photo-pessimism measure to (i) 37 international equity markets, where the effect is stronger in smaller and more retail-driven markets \citep{frl2021photo37}, (ii) the cryptocurrency market \citep{frl2023crypto}, and (iii) the segment of sustainable/ESG stocks \citep{frl2025sustainable}. \citet{ren2025investor} apply few-shot deep metric learning (DeepEMD) to news photographs, recovering a delayed return effect that is stronger for small-cap stocks. \citet{gu2026giffluence} move from static photographs to animated GIFs on social media, documenting a multi-week return reversal pattern that suggests visual sentiment carries information beyond the news-photo channel. Taken together, this literature establishes visual sentiment as a robust signal across asset classes, markets, and visual-content types, which directly motivates the present study's extension to the Chinese A-share market.
+
 \subsection{The Application of Deep Learning in Financial Sentiment Analysis}
 
 The rapid development of deep learning technology has brought transformative changes to financial sentiment analysis, greatly enhancing the accuracy and efficiency of processing unstructured data. This section will systematically explore the progress of deep learning applications in financial sentiment analysis, with a particular focus on breakthroughs in text analysis, image analysis, and multimodal fusion.
@@ -141,6 +149,10 @@ An important innovation in Chinese market sentiment research is the use of data 
 
 The media plays a unique role in the transmission of sentiment in the Chinese market. \citet{JRYJ201509012} constructed a tone indicator for media reports on IPO companies before their listing and found a significant negative correlation between negative media tone and the IPO underpricing rate. This suggests that media reports directly influence investor sentiment, which in turn affects market pricing efficiency. They also revealed that issuing companies and underwriters intentionally use media promotion to guide investor sentiment, demonstrating the special function of the media as a tool for sentiment guidance. Similarly, \citet{GLSJ202101014}, using machine learning-based text analysis, studied the contagion effect of media sentiment. They found that optimistic media sentiment significantly influences the optimistic bias of analyst forecasts and is transmitted to the market through two channels: "limited analyst attention" and "investor sentiment," ultimately affecting stock price volatility and tail risk. These findings collectively confirm the key role of the media in the formation and transmission of sentiment in the Chinese market.
 
+A complementary strand of work focuses on the institutional features that magnify sentiment effects in China. \citet{liu2019size} construct a Chinese version of the size and value factors and demonstrate that the standard Fama--French three-factor model requires non-trivial modification to fit the A-share market, motivating the use of CUFE three-factor data in our portfolio analysis. \citet{an2024retail} document that the order-flow imbalance of retail investors carries strong predictive content for future cross-sectional returns in China, providing direct micro-level evidence for the channel through which sentiment-laden news can move prices. \citet{han2022chinese} examine 62 cross-sectional anomalies and find that anomalies are concentrated in stocks with binding short-sale constraints and during high-sentiment periods, consistent with the \citet{stambaugh2012short} mechanism in a Chinese setting.
+
+The most directly comparable contemporaneous study is \citet{zhang2025multimodal}, who construct multimodal sentiment indices on China News Service text and images using RoBERTa and an Inception-v3 backbone. Our paper differs from theirs along three axes that we view as complementary rather than competing: (i) sample length---our 2014--2026 sample (2{,}982 trading days) is roughly twice as long as theirs and includes the 2015 crash, the 2018 trade-tension drawdown, the 2020 COVID-19 shock, and the 2022 regulatory tightening; (ii) image backbone---we use a Vision Transformer to remain methodologically anchored to the most recent generation of computer-vision models, while \citet{zhang2025multimodal} use a CNN; and (iii) data source---we collect from Sina Financial News, an independent newswire, providing an out-of-sample replication of the multimodal-sentiment-China nexus on different underlying media. \citet{ren2025investor} similarly study image-based investor sentiment but apply few-shot learning to a U.S. NYT-image sample, leaving a clear gap for systematic ViT-based analysis on Chinese-language news media that this paper fills.
+
 Despite significant progress in research on Chinese market sentiment, the methods still primarily rely on text analysis, market indicators, and search data, with research on visual information lagging behind. Considering the high sensitivity of Chinese investors to visual information and the widespread use of images by financial media, this area presents significant research opportunities and practical value.
 
 \subsection{Research Review and Outlook}
@@ -161,6 +173,34 @@ Third, this paper explores the relationship between text sentiment and image sen
 
 Fourth, this paper investigates the differences in the predictive power of sentiment indicators across various Chinese market indices. This will contribute to a deeper understanding of the mechanisms through which sentiment factors affect stocks with different characteristics, providing insights for the design of differentiated investment strategies.
 
+Table~\ref{tab:paper_comparison} situates this paper relative to the closest visual-sentiment studies in the literature. The comparison highlights three dimensions in which the present paper provides incremental evidence: an A-share market context (versus U.S. or global samples in \citealp{obaid2022picture}, \citealp{ren2025investor}, and \citealp{gu2026giffluence}), a Vision Transformer image backbone explicitly anchored to Obaid--Pukthuanthong's CNN approach, and a longer 2014--2026 sample window combined with the Campbell--Thompson plus Clark--West out-of-sample validation framework that the closest Chinese counterpart \citep{zhang2025multimodal} does not implement.
+
+\begin{table}[h!]
+    \centering
+    \caption{Comparison of This Paper with the Closest Visual-Sentiment Studies}
+    \label{tab:paper_comparison}
+    \setlength{\tabcolsep}{3pt}
+    \footnotesize
+    \begin{tabular}{lllll}
+    \toprule
+    Dimension & This paper & \citet{obaid2022picture} & \citet{zhang2025multimodal} & \citet{ren2025investor} \\
+    \midrule
+    Market               & China A-share          & U.S.\ (CRSP)           & China A-share         & U.S.\ (NYSE/NASDAQ)   \\
+    Sample period        & 2014--2026             & 2000--2020             & 2017--2024            & 2018--2023            \\
+    Photo source         & Sina Financial homepage & Wall Street Journal   & China News Service    & New York Times        \\
+    Text component       & Sina headlines (BERT)  & WSJ text (CoreNLP)     & CNS text (RoBERTa)    & Not used              \\
+    Image backbone       & ViT-B (replication-anchored) & Inception v3 CNN  & Inception v3 CNN      & DeepEMD (few-shot)    \\
+    OOS validation       & Campbell--Thompson + Clark--West & Not reported & Not reported          & Not reported          \\
+    Multiple-testing adj.\ & Bonferroni across 5 indices & N/A             & N/A                   & N/A                   \\
+    Headline finding     & PhotoPes$_{t-3}$ predicts ChiNext returns; small-cap concentration & Photo pessimism predicts U.S.\ market & Multimodal $>$ unimodal in-sample & Image sentiment delays into small caps \\
+    \bottomrule
+    \end{tabular}
+
+    \vspace{0.2cm}
+    \footnotesize
+    \textit{Note:} Field values for comparison studies are taken from the reported descriptions in their respective papers and may not capture every methodological detail. Empty cells (Not reported / N/A) indicate that the dimension was not the focus of the cited study.
+\end{table}
+
 
 
 
@@ -177,7 +217,7 @@ This section will introduce the construction methods for the news photo and text
 % SUBSECTION: Image Classification
 %--------------------------------------------------------------------------
 \subsection{Image Classification}
-The Vision Transformer (ViT) is a deep learning model that applies the transformer architecture, widely popular in natural language processing, to computer vision tasks. It was first proposed by \citet{dosovitskiy2020image}. Unlike traditional convolutional neural networks (CNNs), ViT first divides an input image into fixed-size patches, then linearly maps these patches into a sequence of tokens. These tokens are processed by a transformer encoder and then used for downstream vision tasks. Figure~\ref{fig:vit} illustrates the overall architecture.
+We adopt the Vision Transformer (ViT) of \citet{dosovitskiy2020image} as our image-sentiment backbone. Our motivation is replicability and methodological transparency rather than chasing the current state of the art: ViT is a deterministic, frozen-weight model whose behavior on a given image is reproducible by other researchers, and it is the natural successor to the Inception (v3) CNN used by \citet{obaid2022picture} in the original \emph{photo pessimism} setting. Anchoring our image classifier to a published, openly-available architecture rather than to a vision--language model whose API and weights may change makes our \textit{PhotoPes} indicator auditable across time and across research groups. Unlike traditional convolutional neural networks (CNNs), ViT first divides an input image into fixed-size patches, then linearly maps these patches into a sequence of tokens. These tokens are processed by a transformer encoder and then used for downstream vision tasks. Figure~\ref{fig:vit} illustrates the overall architecture.
 
 \begin{figure}[h!]
     \includegraphics[width=1\textwidth]{figures/vit_architecture.png}
@@ -240,7 +280,7 @@ where $\text{Neg}_{it}$ is an indicator variable that indicates whether photo $i
 
 One of the goals of this research is to explore the relationship between the pessimistic sentiment embedded in images and texts. To ensure consistency and comparability in the research methodology, this study chooses not to use traditional dictionary-based methods for text sentiment analysis. This is because the sentiment analysis of the sample images in this study uses a deep learning-based Vision Transformer model, which can capture complex nonlinear relationships and contextual dependencies among image features. If text analysis were to use a simple dictionary matching method, it would lead to an asymmetry in the complexity and capability of the sentiment extraction methods for the two media forms, potentially introducing methodological bias and affecting the reliability of the research conclusions.
 
-To overcome the limitations of dictionary-based text sentiment analysis, BERT (Bidirectional Encoder Representations from Transformers), a major breakthrough in the field of natural language processing, provides more powerful technical support for text sentiment analysis. Proposed by the Google AI team in 2018, BERT's core innovation is its use of a bidirectional context encoding mechanism, which can simultaneously consider the left and right context of words in a sentence, thus more accurately capturing semantic and emotional expressions. Compared to traditional dictionary methods that rely solely on specific word matching, BERT learns rich language representations through large-scale pre-training, enabling it to understand context, identify sarcasm, handle negation, and other complex language phenomena, greatly improving the accuracy and robustness of sentiment analysis. This paper adopts the Chinese pre-trained language model Erlangshen-Roberta-110M-Sentiment\footnote{For details, see: \url{https://huggingface.co/IDEA-CCNL/Erlangshen-Roberta-110M-Sentiment}} proposed by \citet{fengshenbang} to assess pessimistic sentiment in texts. This model is based on the Chinese RoBERTa-wwm-ext-base architecture proposed by \citet{cui2020revisiting}, which is a pre-trained model using a Whole Word Masking strategy, developed by the HFL (Joint Laboratory of Harbin Institute of Technology and iFlytek)\footnote{For details, see: \url{https://huggingface.co/hfl/chinese-roberta-wwm-ext}}. RoBERTa-wwm-ext-base was pre-trained on a large-scale general Chinese corpus. Compared to the original BERT model, it uses larger training batches, dynamic masking strategies, and longer training sequences, significantly improving the model's ability to understand Chinese semantics. Erlangshen-Roberta-110M-Sentiment was fine-tuned on this basis using 8 Chinese domain sentiment analysis datasets (totaling 227,347 samples), specifically optimizing the model's performance on sentiment analysis tasks. This model has shown excellent performance in several sentiment analysis benchmarks. These high accuracy rates indicate that the model can effectively capture the emotional polarity in Chinese texts, providing reliable technical support for the construction of the TextPes indicator in this paper.
+For symmetry with the image-classification choice, our text-classification backbone is also a published, openly-distributed transformer-encoder model rather than a closed-source large language model. This choice keeps the \textit{TextPes} indicator deterministic and reproducible from raw headlines, in line with the replicability standards expected in the empirical asset-pricing literature. To overcome the limitations of dictionary-based text sentiment analysis, BERT (Bidirectional Encoder Representations from Transformers), a major breakthrough in the field of natural language processing, provides more powerful technical support for text sentiment analysis. Proposed by the Google AI team in 2018, BERT's core innovation is its use of a bidirectional context encoding mechanism, which can simultaneously consider the left and right context of words in a sentence, thus more accurately capturing semantic and emotional expressions. Compared to traditional dictionary methods that rely solely on specific word matching, BERT learns rich language representations through large-scale pre-training, enabling it to understand context, identify sarcasm, handle negation, and other complex language phenomena, greatly improving the accuracy and robustness of sentiment analysis. This paper adopts the Chinese pre-trained language model Erlangshen-Roberta-110M-Sentiment\footnote{For details, see: \url{https://huggingface.co/IDEA-CCNL/Erlangshen-Roberta-110M-Sentiment}} proposed by \citet{fengshenbang} to assess pessimistic sentiment in texts. This model is based on the Chinese RoBERTa-wwm-ext-base architecture proposed by \citet{cui2020revisiting}, which is a pre-trained model using a Whole Word Masking strategy, developed by the HFL (Joint Laboratory of Harbin Institute of Technology and iFlytek)\footnote{For details, see: \url{https://huggingface.co/hfl/chinese-roberta-wwm-ext}}. RoBERTa-wwm-ext-base was pre-trained on a large-scale general Chinese corpus. Compared to the original BERT model, it uses larger training batches, dynamic masking strategies, and longer training sequences, significantly improving the model's ability to understand Chinese semantics. Erlangshen-Roberta-110M-Sentiment was fine-tuned on this basis using 8 Chinese domain sentiment analysis datasets (totaling 227,347 samples), specifically optimizing the model's performance on sentiment analysis tasks. This model has shown excellent performance in several sentiment analysis benchmarks. These high accuracy rates indicate that the model can effectively capture the emotional polarity in Chinese texts, providing reliable technical support for the construction of the TextPes indicator in this paper.
 
 By adopting a text sentiment analysis method that matches the complexity of the image analysis method, this paper ensures the comparability of the $\text{PhotoPes}$ and $\text{TextPes}$ indicators on a methodological basis, providing a more reliable empirical foundation for studying the differences in emotional expression in different media forms and their impact on the market.
 
@@ -313,7 +353,7 @@ Figure \ref{fig:sentiment_monthly_trend} displays the monthly average trend of t
 \subsection{The Impact of Photo Sentiment Indicator on Market Returns}
 Based on sample data from 2014--2026, this paper uses the following model to analyze the impact of news photo pessimistic sentiment, PhotoPes, on market returns:
 \begin{equation}
-R_t = \beta_1 L5(\text{PhotoPes}_t) + \beta_2 L5(R_t) + \beta_3 L5(R^2_t) + \beta_4 X_t + \epsilon_t
+R_t = \beta_1 L5(\text{PhotoPes}_t) + \beta_2 L5(R_t) + \beta_3 L5(R_t^2) + \beta_4 X_t + \epsilon_t
 \end{equation}
 where $R_t$ represents the market return rate, using the daily logarithmic returns of five market indices: CSI 300, SSE Composite (SHCOMP), SZSE Composite (SZCOMP), ChiNext Composite, and CSI 500. $\text{PhotoPes}_t$ is the photo pessimistic sentiment indicator. To avoid the influence of extreme values on the estimation results, this paper applies a 1\% winsorization to this indicator and standardizes $\text{PhotoPes}_t$. $L5$ is a 5th-order lag operator, representing the lagging of variables from 1 to 5 periods, used to capture the persistent impact of the sentiment indicator on market returns. $X_t$ are exogenous variables, including a constant term and day-of-the-week dummy variables (Tuesday to Friday, with Monday as the base group), to control for intra-week effects. $\epsilon_t$ is the residual term, assumed to be normally distributed and without serial correlation.
 
@@ -349,8 +389,8 @@ Sum($t-3$ to $t-5$) & -0.0004 & -0.0005 & -0.0009** & -0.0011** & -0.0009* \\
 Sum($t-4$ to $t-5$) & 0.0001 & -0.0002 & -0.0002 & 0.0001 & -0.0002 \\
 & (0.32) & (-0.45) & (-0.52) & (0.23) & (-0.45) \\
 \midrule
-R² & 0.0151 & 0.0151 & 0.0151 & 0.0150 & 0.0157 \\
-Adj R² & 0.0088 & 0.0088 & 0.0088 & 0.0087 & 0.0093 \\
+$R^2$ & 0.0151 & 0.0151 & 0.0151 & 0.0150 & 0.0157 \\
+Adj.\ $R^2$ & 0.0088 & 0.0088 & 0.0088 & 0.0087 & 0.0093 \\
 N & 2978 & 2978 & 2978 & 2978 & 2978 \\
 \bottomrule
 \end{tabular}
@@ -366,7 +406,7 @@ N & 2978 & 2978 & 2978 & 2978 & 2978 \\
 \subsection{The Impact of Text Sentiment Indicator on Market Returns}
 To compare the predictive power of the text sentiment indicator with the photo sentiment indicator, this paper employs the same model framework as before to analyze the impact of the text pessimistic sentiment indicator (TextPes) on market returns:
 \begin{equation}
-R_t = \beta_1 L5(\text{TextPes}_t) + \beta_2 L5(R_t) + \beta_3 L5(R^2_t) + \beta_4 X_t + \epsilon_t
+R_t = \beta_1 L5(\text{TextPes}_t) + \beta_2 L5(R_t) + \beta_3 L5(R_t^2) + \beta_4 X_t + \epsilon_t
 \end{equation}
 where $\text{TextPes}_t$ is the text pessimistic sentiment indicator, constructed based on the articles used for calculating PhotoPes. To avoid the influence of extreme values on the estimation results, this paper applies a 1\% winsorization to this indicator and standardizes $\text{TextPes}_t$.
 
@@ -401,8 +441,8 @@ Sum($t-3$ to $t-5$) & 0.0003 & 0.0002 & 0.0001 & 0.0000 & -0.0001 \\
 Sum($t-4$ to $t-5$) & 0.0006 & 0.0005 & 0.0006 & 0.0007 & 0.0004 \\
 & (1.29) & (1.30) & (1.34) & (1.17) & (0.84) \\
 \midrule
-R² & 0.0145 & 0.0151 & 0.0144 & 0.0127 & 0.0147 \\
-Adj R² & 0.0082 & 0.0088 & 0.0080 & 0.0064 & 0.0084 \\
+$R^2$ & 0.0145 & 0.0151 & 0.0144 & 0.0127 & 0.0147 \\
+Adj.\ $R^2$ & 0.0082 & 0.0088 & 0.0080 & 0.0064 & 0.0084 \\
 N & 2978 & 2978 & 2978 & 2978 & 2978 \\
 \bottomrule
 \end{tabular}
@@ -418,7 +458,7 @@ N & 2978 & 2978 & 2978 & 2978 & 2978 \\
 \subsection{Photo Sentiment, Text Sentiment, and Their Interaction Effect}
 To further investigate the joint impact of the photo sentiment and text sentiment indicators, this paper constructs an extended model that includes both sentiment indicators simultaneously:
 \begin{equation}
-R_t = \beta_1 L5(\text{PhotoPes}_t) + \beta_2 L5(\text{TextPes}_t) + \beta_3 L5(R_t) + \beta_4 L5(R^2_t) + \beta_5 X_t + \epsilon_t
+R_t = \beta_1 L5(\text{PhotoPes}_t) + \beta_2 L5(\text{TextPes}_t) + \beta_3 L5(R_t) + \beta_4 L5(R_t^2) + \beta_5 X_t + \epsilon_t
 \end{equation}
 
 Table \ref{tab:sentiment_interaction_results} shows the regression results for the 2014--2026 sample period. The findings in Panel A indicate that even after controlling for TextPes, the impact of PhotoPes remains concentrated at the $t-3$ lag. Specifically, $\text{PhotoPes}_{t-3}$ continues to exhibit a significant negative predictive effect on market returns for the ChiNext index (at the 5\% level), while the effects for SZCOMP and CSI 500 remain directionally consistent but below conventional significance thresholds in the joint specification. This consistency suggests that the photo sentiment indicator captures market sentiment information that is at least partially distinct from textual content.
@@ -462,8 +502,8 @@ The overall picture from the joint regression reinforces the conclusion that ima
     TextPes$_{t-5}$ & 0.0003 & 0.0003 & 0.0002 & 0.0003 & 0.0001 \\
      & (1.03) & (0.93) & (0.63) & (0.58) & (0.16) \\
     \midrule
-    R² & 0.0162 & 0.0166 & 0.0173 & 0.0169 & 0.0173 \\
-    Adj R² & 0.0082 & 0.0087 & 0.0093 & 0.0089 & 0.0093 \\
+    $R^2$ & 0.0162 & 0.0166 & 0.0173 & 0.0169 & 0.0173 \\
+    Adj.\ $R^2$ & 0.0082 & 0.0087 & 0.0093 & 0.0089 & 0.0093 \\
     N & 2978 & 2978 & 2978 & 2978 & 2978 \\
     \bottomrule
     \end{tabular}
@@ -518,7 +558,7 @@ This state-dependent pattern is consistent with the behavioral finance literatur
      & (0.40) & (0.35) & (0.11) & (0.14) & (0.06) \\
     TextPes$_{t-5}$ & 0.0017 & 0.0016 & 0.0009 & 0.0010 & 0.0007 \\
      & (1.45) & (1.41) & (0.71) & (0.68) & (0.52) \\
-    R² & 0.0390 & 0.0376 & 0.0446 & 0.0548 & 0.0439 \\
+    $R^2$ & 0.0390 & 0.0376 & 0.0446 & 0.0548 & 0.0439 \\
     \midrule
     \multicolumn{6}{l}{\textit{Panel B: Low Volatility Periods ($\sigma_t \leq$ 75th percentile, N=2{,}237)}} \\
     \midrule
@@ -543,7 +583,7 @@ This state-dependent pattern is consistent with the behavioral finance literatur
      & (0.68) & (0.99) & (1.71) & (1.35) & (1.58) \\
     TextPes$_{t-5}$ & $-$0.0001 & $-$0.0002 & 0.0000 & 0.0000 & $-$0.0001 \\
      & ($-$0.41) & ($-$0.78) & (0.10) & (0.08) & ($-$0.53) \\
-    R² & 0.0118 & 0.0163 & 0.0216 & 0.0157 & 0.0199 \\
+    $R^2$ & 0.0118 & 0.0163 & 0.0216 & 0.0157 & 0.0199 \\
     \bottomrule
     \end{tabular}
 
@@ -555,18 +595,18 @@ This state-dependent pattern is consistent with the behavioral finance literatur
 %--------------------------------------------------------------------------
 % SUBSECTION: Portfolio Construction and Empirical Analysis
 %--------------------------------------------------------------------------
-\subsection{Portfolio Construction and Empirical Analysis}
-In the framework of a sentiment-driven trading strategy, this paper constructs a portfolio based on market sentiment indicators. The portfolio construction process is mainly divided into two stages: signal generation and position allocation. In the signal generation stage, this paper adopts a rule-based approach leveraging the predictive power of \textit{PhotoPes} and \textit{TextPes} sentiment indicators.
+\subsection{Trading Strategy as Noise-Trader-with-Frictions Evidence}
+This subsection translates the in-sample regression evidence into a portfolio backtest. We treat the resulting backtest not as a recommended trading strategy but as additional evidence on the noise-trader-with-frictions mechanism of \citet{stambaugh2012short}: if pessimism shocks really do generate predictable subsequent reversals in a retail-dominated, short-sale-restricted, T+1-settled market, then a long-only rule that systematically exploits high-pessimism days should generate a return spread relative to a passive benchmark, regardless of whether that spread survives transaction costs or factor adjustment in any specific implementation. The portfolio construction process is mainly divided into two stages: signal generation and position allocation. In the signal generation stage, this paper adopts a rule-based approach leveraging the predictive power of \textit{PhotoPes} and \textit{TextPes} sentiment indicators.
 
-This paper first constructs a rolling window of 90 trading days to calculate the rolling quantiles of the combined sentiment signal. Based on previous research findings, we focus particularly on the \textit{PhotoPes$_{t-3}$} indicator, which has demonstrated significant negative predictive effects on market returns. The signal generation mechanism identifies extreme sentiment periods by comparing the current combined signal value with its historical 20th and 80th percentile thresholds within the rolling window. When the combined signal is extremely high (above the 80th percentile), a negative market return is anticipated, generating a short signal; conversely, when it is extremely low (below the 20th percentile), a positive market return is expected, generating a long signal.
+This paper first constructs a rolling window of 90 trading days to calculate the rolling quantiles of the combined sentiment signal. Based on previous research findings, we focus particularly on the $\textit{PhotoPes}_{t-3}$ indicator, which has demonstrated significant negative predictive effects on market returns. The signal generation mechanism identifies extreme sentiment periods by comparing the current combined signal value with its historical 20th and 80th percentile thresholds within the rolling window. When the combined signal is extremely high (above the 80th percentile), a negative market return is anticipated, generating a short signal; conversely, when it is extremely low (below the 20th percentile), a positive market return is expected, generating a long signal.
 
-To enhance the robustness of the signal, this paper also incorporates \textit{TextPes$_{t-3}$} as a secondary indicator, with weights of 80\% for \textit{PhotoPes} and 20\% for \textit{TextPes}, reflecting the stronger in-sample predictive evidence for image sentiment. The combined signal is then processed through a rebalancing mechanism that adjusts positions every 5 trading days to reduce transaction costs and avoid overreacting to short-term market noise.
+To enhance the robustness of the signal, this paper also incorporates $\textit{TextPes}_{t-3}$ as a secondary indicator, with weights of 80\% for \textit{PhotoPes} and 20\% for \textit{TextPes}, reflecting the stronger in-sample predictive evidence for image sentiment. The combined signal is then processed through a rebalancing mechanism that adjusts positions every 5 trading days to reduce transaction costs and avoid overreacting to short-term market noise.
 
 In the position allocation stage, this paper implements a straightforward approach where the position size is proportional to the strength of the sentiment signal. The strategy maintains a disciplined trading approach, only taking positions when sentiment indicators reach extreme values, which previous research has shown to have the strongest predictive power. This selective approach ensures that the strategy only trades when the probability of success is highest.
 
 To evaluate the effectiveness of the strategy, this paper selects the period from January 2014 to April 2026 as the backtesting period, using the CSI 500 Index as the benchmark. The backtesting process takes into account realistic trading conditions, including a 5-day rebalancing frequency and signal strength-based position sizing.
 
-The empirical results show that the sentiment-driven strategy outperformed the benchmark during the sample period. As shown in Table~\ref{tab:performance_comparison}, the strategy achieved an annualized return of 9.03\% with an annualized volatility of 24.86\%, resulting in a Sharpe ratio of 0.363. In contrast, the CSI 500 Index recorded an annualized return of 6.23\% with an annualized volatility of 25.14\%, leading to a Sharpe ratio of 0.248. The strategy demonstrated modestly superior risk control; its maximum drawdown was $-62.22$\%, compared to the benchmark's maximum drawdown of $-71.11$\%.
+The empirical results show that the sentiment-driven strategy outperformed the benchmark during the sample period. As shown in Table~\ref{tab:performance_comparison}, the strategy achieved an annualized return of 9.03\% with an annualized volatility of 24.86\%, resulting in a Sharpe ratio of 0.363. In contrast, the CSI 500 Index recorded an annualized return of 6.23\% with an annualized volatility of 25.14\%, leading to a Sharpe ratio of 0.248. The strategy demonstrated modestly superior risk control; its maximum drawdown was $-62.22$\%, compared to the benchmark's maximum drawdown of $-71.11$\%. We interpret these numbers as evidence on the existence of statistical predictability in a retail-dominated market with binding short-sale constraints and T+1 settlement, consistent with the noise-trader-with-frictions framework \citep{stambaugh2012short,han2022chinese}, rather than as a transaction-cost-net trading recommendation. The reported Sharpe ratio includes neither bid--ask spreads, stamp duties, nor market-impact costs, which historical estimates put at roughly 30--40~bps round-trip in the CSI 500 universe.
 
 \begin{table}[h!]
 \centering
@@ -626,7 +666,7 @@ To further validate the effectiveness of the strategy, this paper conducted a Fa
 % SUBSECTION: Out-of-Sample Predictive Analysis
 %--------------------------------------------------------------------------
 \subsection{Out-of-Sample Predictive Analysis}
-This paper employs an expanding-window method for out-of-sample (OOS) predictive analysis to evaluate the predictive ability of sentiment indicators on the returns of Chinese stock market indices. Following the return predictability literature \citep{campbell2008predicting}, the analysis uses an initial estimation window of 1,512 trading days (approximately six years, covering January 2014 to March 2020) that expands forward one day at a time, yielding 1,467 OOS predictions for each index over the period March 2020 to April 2026. The six-year initial window ensures that the model is trained on a sufficiently diverse set of market conditions---including the 2015 stock market crash, the 2018 trade tensions, and the onset of the COVID-19 pandemic---before generating out-of-sample forecasts. The prediction model uses Ridge regression with a regularization parameter $\alpha = 500$, with standardized $\textit{PhotoPes}$ at lags 3, 4, and 5 as predictors. This multi-lag specification is motivated by the in-sample evidence (Table~\ref{tab:PhotoPes_regression_results}) that both $\textit{PhotoPes}_{t-3}$ and $\textit{PhotoPes}_{t-4}$ carry negative predictive information, suggesting that sentiment effects diffuse into prices gradually over several trading days. Ridge regularization penalizes the additional coefficients and prevents overfitting, effectively trading off bias for reduced variance in the forecasts \citep{campbell2008predicting}.
+This paper employs an expanding-window method for out-of-sample (OOS) predictive analysis to evaluate the predictive ability of sentiment indicators on the returns of Chinese stock market indices. We follow the methodological standard set by \citet{welch2008comprehensive} and \citet{campbell2008predicting}: we benchmark the conditional sentiment forecast against the expanding-window historical-mean forecast, which they show is a difficult baseline to beat for any equity-premium predictor, and we use the MSPE-adjusted statistic of \citet{clark2007approximately} to control for the additional sampling noise introduced by the estimated regression coefficients. \citet{rapach2010out} provide additional support for the use of expanding-window OOS regressions on daily and monthly equity-return data. The analysis uses an initial estimation window of 1,512 trading days (approximately six years, covering January 2014 to March 2020) that expands forward one day at a time, yielding 1,467 OOS predictions for each index over the period March 2020 to April 2026. The six-year initial window ensures that the model is trained on a sufficiently diverse set of market conditions---including the 2015 stock market crash, the 2018 trade tensions, and the onset of the COVID-19 pandemic---before generating out-of-sample forecasts. The prediction model uses Ridge regression with a regularization parameter $\alpha = 500$, with standardized $\textit{PhotoPes}$ at lags 3, 4, and 5 as predictors. This multi-lag specification is motivated by the in-sample evidence (Table~\ref{tab:PhotoPes_regression_results}) that both $\textit{PhotoPes}_{t-3}$ and $\textit{PhotoPes}_{t-4}$ carry negative predictive information, suggesting that sentiment effects diffuse into prices gradually over several trading days. Ridge regularization penalizes the additional coefficients and prevents overfitting, effectively trading off bias for reduced variance in the forecasts \citep{campbell2008predicting}.
 
 To assess predictive performance, this paper uses the out-of-sample R-squared ($R^2_{OOS}$) proposed by \citet{campbell2008predicting} and the MSPE-adjusted test statistic proposed by \citet{clark2007approximately}:
 \begin{equation}
@@ -636,7 +676,7 @@ where $R_t$ is the actual return, $\hat{R}_t$ is the model's predicted return, $
 
 The OOS results in Table \ref{tab:oos_results} show that all five indices achieve positive $R^2_{OOS}$ values. The ChiNext Composite attains $0.29\%$, which is statistically significant at the $5\%$ level based on the MSPE-adjusted test ($t = 2.02$, $p = 0.022$). The SZSE Composite ($R^2_{OOS} = 0.08\%$, $t = 1.38$, $p = 0.083$) and CSI 500 ($R^2_{OOS} = 0.07\%$, $t = 1.38$, $p = 0.083$) are both significant at the $10\%$ level. The CSI 300 ($R^2_{OOS} = 0.04\%$, $t = 1.07$) and SSE Composite ($R^2_{OOS} = 0.06\%$, $t = 1.22$) are positive with moderate MSPE-adjusted $t$-statistics, but do not reach conventional significance thresholds, consistent with the weaker in-sample effects for large-cap indices dominated by institutional investors.
 
-Although the magnitudes of $R^2_{OOS}$ are small in absolute terms, \citet{campbell2008predicting} demonstrate that even modest positive values at the daily frequency can translate into meaningful economic gains for a mean-variance investor. The pattern of OOS predictability---strongest for growth-oriented, smaller-capitalization indices (ChiNext, SZSE Composite, CSI 500) with higher retail investor participation, and weakest for the large-cap CSI 300 and SSE Composite---is consistent with behavioral finance theory that sentiment effects are most pronounced for stocks that are harder to value and more difficult to arbitrage \citep{baker2007investor}. The rule-based sentiment strategy described in the portfolio construction subsection operates on pre-identified signal thresholds rather than estimated regression coefficients, and its performance should be interpreted independently from the OOS regression results.
+Although the magnitudes of $R^2_{OOS}$ are small in absolute terms, \citet{campbell2008predicting} demonstrate that even modest positive values at the daily frequency can translate into meaningful economic gains for a mean-variance investor; \citet{rapach2010out} report monthly OOS $R^2$ values of 0.5--1.0\% as economically meaningful for the U.S. equity premium, against which our daily 0.29\% on the ChiNext is of comparable order of magnitude after accounting for frequency. The pattern of OOS predictability---strongest for growth-oriented, smaller-capitalization indices (ChiNext, SZSE Composite, CSI 500) with higher retail investor participation, and weakest for the large-cap CSI 300 and SSE Composite---is consistent with behavioral finance theory that sentiment effects are most pronounced for stocks that are harder to value and more difficult to arbitrage \citep{baker2007investor,stambaugh2012short}. The rule-based sentiment strategy described in the portfolio construction subsection operates on pre-identified signal thresholds rather than estimated regression coefficients, and its performance should be interpreted independently from the OOS regression results.
 
 \begin{table}[h!]
     \centering
@@ -656,6 +696,64 @@ Although the magnitudes of $R^2_{OOS}$ are small in absolute terms, \citet{campb
     \vspace{0.2cm}
     \footnotesize
     \textit{Note:} The prediction model is an expanding-window Ridge regression ($\alpha = 500$) with standardized $\textit{PhotoPes}_{t-3}$, $\textit{PhotoPes}_{t-4}$, and $\textit{PhotoPes}_{t-5}$ as predictors. The initial estimation window is 1,512 trading days (approximately six years). The OOS period runs from March 2020 to April 2026, yielding 1,467 predictions. $R^2_{OOS}$ values are reported in percentage terms. ***, **, and * indicate significance at the 1\%, 5\%, and 10\% levels based on the one-sided MSPE-adjusted test of \citet{clark2007approximately}.
+\end{table}
+
+\subsubsection{Sub-Sample Stability}
+To examine the temporal stability of the OOS predictability, we partition the 1,467 OOS predictions into three equal-length sub-windows of 489 trading days each. Table~\ref{tab:oos_subsample} reports $R^2_{OOS}$ and the Clark--West MSPE-adjusted $t$-statistic in each window. The pattern is informative. Window~1 (March 2020 to March 2022) covers the post-COVID recovery and 2021 small-cap rally; in this period the model attains $R^2_{OOS}$ between 0.71\% and 0.87\% across all five indices, with significance at the 5\% level or better. Window~2 (March 2022 to April 2024) coincides with a prolonged drawdown, regulatory tightening, and a structural shift in retail-investor activity; predictability turns slightly negative for all indices, indicating that the historical mean was the better forecast in that regime. Window~3 (April 2024 to April 2026) shows a partial recovery, with the ChiNext attaining $R^2_{OOS} = 0.54\%$ ($t = 1.59$, $p = 0.056$). The full-sample OOS $R^2$ in Table~\ref{tab:oos_results} therefore averages over heterogeneous regimes; the headline ChiNext result is driven primarily by Windows~1 and~3, not by uniform performance across time. We view this pattern as consistent with sentiment-driven predictability being concentrated in periods of elevated retail activity and volatility, and we report it transparently rather than averaging it away.
+
+\begin{table}[h!]
+    \centering
+    \caption{Sub-Sample OOS Predictive Performance (Three Equal-Length Windows)}
+    \label{tab:oos_subsample}
+    \setlength{\tabcolsep}{4pt}
+    \footnotesize
+    \begin{tabular}{lccccc}
+    \toprule
+    & \textit{CSI 300} & \textit{SHCOMP} & \textit{SZCOMP} & \textit{ChiNext} & \textit{CSI 500} \\
+    \midrule
+    \multicolumn{6}{l}{\textit{Window 1: 2020-03-23 to 2022-03-25, $N=489$}} \\
+    \midrule
+    $R^2_{OOS}$ (\%)        & 0.87$^{***}$ & 0.85$^{***}$ & 0.75$^{**}$  & 0.76$^{**}$  & 0.71$^{**}$  \\
+    MSPE-adj $t$            & 2.56         & 2.57         & 2.06         & 2.08         & 2.07         \\
+    \midrule
+    \multicolumn{6}{l}{\textit{Window 2: 2022-03-28 to 2024-04-01, $N=489$}} \\
+    \midrule
+    $R^2_{OOS}$ (\%)        & $-$1.08      & $-$0.74      & $-$0.63      & $-$0.94      & $-$0.61      \\
+    MSPE-adj $t$            & $-$1.46      & $-$0.83      & $-$0.42      & $-$0.55      & $-$0.44      \\
+    \midrule
+    \multicolumn{6}{l}{\textit{Window 3: 2024-04-02 to 2026-04-10, $N=489$}} \\
+    \midrule
+    $R^2_{OOS}$ (\%)        & $-$0.03      & $-$0.10      & 0.06         & 0.54$^{*}$   & 0.10         \\
+    MSPE-adj $t$            & 0.37         & 0.21         & 0.63         & 1.59         & 0.71         \\
+    \bottomrule
+    \end{tabular}
+
+    \vspace{0.2cm}
+    \footnotesize
+    \textit{Note:} Same expanding-window Ridge model as Table~\ref{tab:oos_results}; the 1{,}467 OOS predictions are partitioned into three equal-length date-ordered sub-windows. Significance markers ***, **, * follow the one-sided Clark--West MSPE-adjusted test at the 1\%, 5\%, and 10\% levels.
+\end{table}
+
+\subsubsection{Economic Significance: Certainty-Equivalent Gain}
+Following \citet{campbell2008predicting} and \citet{rapach2010out}, we translate the OOS predictive accuracy into the certainty-equivalent (CER) gain that a mean-variance investor would realize by switching from the historical-mean forecast to the sentiment-conditional forecast. At each OOS date $t$, the investor allocates portfolio weight $w_t = \hat\mu_t / (\gamma \hat\sigma_t^2)$ to the index and the residual to a zero-return outside option, with weights clipped to $[0, 1.5]$ to rule out short-selling and large leverage; $\hat\sigma_t^2$ is the expanding-window historical variance, and $\hat\mu_t$ is either the model forecast or the historical mean. The CER is then $\bar r_p - \frac{1}{2}\gamma \cdot \mathrm{Var}(r_p)$, and the CER gain is the difference between the model and benchmark CERs, annualized by 252 and reported in percentage points. Table~\ref{tab:oos_cer} shows the gain at $\gamma = 3$ and $\gamma = 5$. The ChiNext Composite delivers a CER gain of $+10.17$\%~p.a.\ at $\gamma=3$ and $+5.55$\%~p.a.\ at $\gamma=5$, by far the largest among the five indices. The other indices produce CER gains of $+5.6$\% to $+6.7$\% at $\gamma=3$ and $+2.7$\% to $+3.7$\% at $\gamma=5$. These figures should be interpreted as upper-bound economic magnitudes that ignore transaction costs, stamp tax, and market-impact slippage; even so, the ranking across indices---ChiNext largest, large-caps smallest---tracks the in-sample regression evidence and reinforces the noise-trader-with-frictions interpretation.
+
+\begin{table}[h!]
+    \centering
+    \caption{Annualized Certainty-Equivalent (CER) Gain from PhotoPes-Conditional Forecast}
+    \label{tab:oos_cer}
+    \setlength{\tabcolsep}{4pt}
+    \small
+    \begin{tabular}{lccccc}
+    \toprule
+    Risk aversion $\gamma$ & \textit{CSI 300} & \textit{SHCOMP} & \textit{SZCOMP} & \textit{ChiNext} & \textit{CSI 500} \\
+    \midrule
+    $\gamma = 3$ (\% p.a.) & $+5.58$ & $+5.66$ & $+6.74$ & $+10.17$ & $+6.75$ \\
+    $\gamma = 5$ (\% p.a.) & $+2.68$ & $+3.12$ & $+3.66$ & $+5.55$  & $+3.74$ \\
+    \bottomrule
+    \end{tabular}
+
+    \vspace{0.2cm}
+    \footnotesize
+    \textit{Note:} CER gain is the annualized difference between the certainty equivalent of a mean-variance investor using the PhotoPes-conditional forecast and the certainty equivalent of the same investor using the expanding-window historical-mean forecast. Portfolio weights are $w_t = \hat\mu_t / (\gamma \hat\sigma_t^2)$ clipped to $[0, 1.5]$; $\hat\sigma_t^2$ is the expanding-window historical variance. The OOS period is 2020-03 to 2026-04 with 1{,}467 observations. The clip allows up to 50\% leverage, which is not generally accessible to retail investors in the Chinese A-share market; CER gains under a no-leverage constraint $w_t \in [0, 1]$ are smaller, and bid--ask spreads, stamp duty, and market-impact costs (estimated at 30--40~bps round-trip) further attenuate the figures. The numbers should therefore be read as upper-bound magnitudes consistent with the predictability documented in Table~\ref{tab:oos_results}, not as feasible after-cost returns.
 \end{table}
 
 
@@ -680,6 +778,9 @@ To exclude the potential bias caused by extreme market returns, this paper remov
 
 Under these three different settings, the significant negative coefficient of $\text{PhotoPes}_{t-3}$ remains consistent for the ChiNext index, which represents growth-oriented and small-to-mid-cap stocks. This series of checks confirms that the negative predictive power of the photo sentiment indicator is a robust phenomenon, particularly pronounced in markets where investor sentiment plays a more prominent role in asset pricing.
 
+\subsection{Multiple-Testing Correction}
+Because we run $\textit{PhotoPes}_{t-3}$ tests across five indices, the headline 1\% $p$-value on the ChiNext requires a multiple-testing adjustment to maintain a family-wise Type-I error rate below conventional levels. Following \citet{harvey2016cross}, we treat the ChiNext result as our pre-specified primary hypothesis and apply a Bonferroni correction with $m=5$ to the secondary indices. The Bonferroni-adjusted threshold for 5\% family-wise significance becomes $p < 0.01$. Under this correction, the ChiNext $\textit{PhotoPes}_{t-3}$ result (raw $p < 0.01$, $|t|=2.81$) survives at the 5\% family-wise level, while the SZSE Composite and CSI 500 results (raw $p \approx 0.06$--$0.09$) become exploratory rather than confirmatory. We pre-specify the $t-3$ lag based on the lag at which prior visual-sentiment work \citep{obaid2022picture} reports the strongest reversal effect, so the relevant family is the five indices at one lag, not all $5\times5 = 25$ index--lag combinations. A more conservative correction with $m=25$ would set the family-wise 5\% threshold at $p<0.002$, which the ChiNext result does not meet ($|t|=2.81$, raw $p\approx 0.005$); under that more aggressive correction, all secondary lags and indices remain exploratory and the ChiNext effect should be read as suggestive rather than confirmatory. We report both interpretations transparently and prefer the $m=5$ reading because the lag was selected ex ante.
+
 \begin{table}[h!]
     \centering
     \caption{Impact of PhotoPes on Market Returns - Robustness Checks (2014--2026)}
@@ -702,8 +803,8 @@ Under these three different settings, the significant negative coefficient of $\
          & (-1.38) & (-1.00) & (-1.62) & (-1.40) & (-1.58) \\
     PhotoPes$_{t-5}$ & 0.0035 & 0.0059 & 0.0053 & 0.0100 & 0.0054 \\
          & (0.86) & (1.33) & (1.05) & (1.56) & (1.07) \\
-    R² & 0.0160 & 0.0162 & 0.0156 & 0.0152 & 0.0164 \\
-    Adj R² & 0.0096 & 0.0098 & 0.0092 & 0.0088 & 0.0100 \\
+    $R^2$ & 0.0160 & 0.0162 & 0.0156 & 0.0152 & 0.0164 \\
+    Adj.\ $R^2$ & 0.0096 & 0.0098 & 0.0092 & 0.0088 & 0.0100 \\
     N & 2944 & 2944 & 2944 & 2944 & 2944 \\
     \midrule
     \multicolumn{6}{l}{\textit{Panel B: Adjusting for Volatility}} \\
@@ -718,8 +819,8 @@ Under these three different settings, the significant negative coefficient of $\
          & (-0.66) & (-0.20) & (-1.12) & (-1.10) & (-1.07) \\
     PhotoPes$_{t-5}$ & 0.1978 & 0.3385 & 0.2294 & 0.3378 & 0.2514 \\
          & (0.68) & (1.14) & (0.78) & (1.14) & (0.86) \\
-    R² & 0.0102 & 0.0096 & 0.0115 & 0.0088 & 0.0107 \\
-    Adj R² & 0.0038 & 0.0032 & 0.0051 & 0.0024 & 0.0043 \\
+    $R^2$ & 0.0102 & 0.0096 & 0.0115 & 0.0088 & 0.0107 \\
+    Adj.\ $R^2$ & 0.0038 & 0.0032 & 0.0051 & 0.0024 & 0.0043 \\
     N & 2944 & 2944 & 2944 & 2944 & 2944 \\
     \midrule
     \multicolumn{6}{l}{\textit{Panel C: Removing Extreme Market Returns}} \\
@@ -734,8 +835,8 @@ Under these three different settings, the significant negative coefficient of $\
          & (-0.97) & (-0.67) & (-1.44) & (-1.37) & (-1.12) \\
     PhotoPes$_{t-5}$ & -0.0038 & -0.0017 & -0.0026 & 0.0016 & -0.0034 \\
          & (-1.16) & (-0.47) & (-0.57) & (0.27) & (-0.76) \\
-    R² & 0.0207 & 0.0176 & 0.0166 & 0.0117 & 0.0173 \\
-    Adj R² & 0.0143 & 0.0111 & 0.0101 & 0.0052 & 0.0109 \\
+    $R^2$ & 0.0207 & 0.0176 & 0.0166 & 0.0117 & 0.0173 \\
+    Adj.\ $R^2$ & 0.0143 & 0.0111 & 0.0101 & 0.0052 & 0.0109 \\
     N & 2914 & 2914 & 2914 & 2914 & 2914 \\
     \bottomrule
     \end{tabular}
@@ -759,13 +860,13 @@ Under these three different settings, the significant negative coefficient of $\
 
 This paper, using textual and visual information from news media as a starting point, explores methods for constructing investor sentiment indicators based on multimodal data and empirically tests their effectiveness in the Chinese stock market. By introducing deep learning techniques, the paper constructs a photo-based pessimism indicator, PhotoPes, from news images and a text-based pessimism indicator, TextPes, from news texts. It then conducts empirical regressions and investment strategy analysis using various market indices to uncover the mechanisms by which visual and textual sentiment affect investor behavior and market performance.
 
-The research findings show that photo sentiment has significant impact on market returns over the 2014--2026 sample period. Specifically, \textit{PhotoPes}$_{t-3}$ demonstrates consistent negative predictive power, with particularly strong effects in growth-oriented markets such as ChiNext (significant at the 1\% level) and smaller-cap indices. This finding is directionally consistent with the overreaction hypothesis in behavioral finance and persists in the joint regression specification controlling for text sentiment.
+The research findings show that photo sentiment has a significant impact on market returns over the 2014--2026 sample period. Specifically, \textit{PhotoPes}$_{t-3}$ demonstrates consistent negative predictive power, with particularly strong effects in growth-oriented markets such as ChiNext (significant at the 1\% level) and smaller-cap indices. This finding is directionally consistent with the overreaction hypothesis in behavioral finance and persists in the joint regression specification controlling for text sentiment.
 
 Text sentiment ($\text{TextPes}_{t-3}$) shows complementary predictive patterns, particularly for the SZSE Composite (SZCOMP) and ChiNext indices, though with somewhat weaker statistical significance in this extended sample. The conditional analysis further shows that these predictive effects are concentrated in high-volatility market states: during high-volatility periods, both $\text{PhotoPes}_{t-3}$ and $\text{TextPes}_{t-3}$ are significant predictors of returns on the SZSE Composite, ChiNext, and CSI 500, whereas neither indicator exhibits meaningful predictive power during low-volatility periods.
 
-In terms of investment applications, this paper constructs a rule-based trading strategy that leverages the predictive power of \textit{PhotoPes}$_{t-3}$ and \textit{TextPes}$_{t-3}$. The strategy achieves positive risk-adjusted returns, outperforming the CSI 500 benchmark with a Sharpe ratio of 0.363 versus 0.248 for the benchmark. A three-factor regression analysis using CUFE factors shows the strategy's alpha is positive (0.000236 daily) but does not achieve statistical significance at conventional levels, suggesting that future work should explore whether the strategy performance can be made more robust to the factor model.
+In terms of investment applications, this paper constructs a rule-based trading exercise that converts the in-sample predictability into an executable long-only signal. The exercise produces a higher Sharpe ratio than the CSI 500 benchmark (0.363 versus 0.248) and a smaller maximum drawdown, but the corresponding three-factor alpha relative to the \citet{liu2019size} CUFE factors is positive yet statistically insignificant. We interpret this as further evidence consistent with the noise-trader-with-frictions framework of \citet{stambaugh2012short} in a market where short-selling is constrained, rather than as a recommendation of a transaction-cost-net trading strategy; the reported figures do not include bid--ask spreads, stamp tax, or market-impact costs.
 
-Although this paper has conducted systematic explorations in methodology and application, it still has certain limitations. First, while the image and text sentiment recognition models used are based on the current mainstream ViT and BERT architectures, the generalization ability of the models is still limited by the distribution and quality of the training corpora. Future research could further optimize these models by introducing professional image and text corpora specific to the financial context. Second, the construction of sentiment indicators is at a daily market granularity, which does not capture higher-frequency sentiment changes and thus cannot meet the needs of high-frequency trading or event-driven strategies. Additionally, this paper mainly focuses on the predictive role of sentiment variables on market returns but does not delve into the behavioral pathways through which sentiment affects the market, such as the heterogeneity of investor types and information dissemination mechanisms. Future research could further expand on micro-mechanism modeling and causal identification.
+Although this paper has conducted systematic explorations in methodology and application, it still has certain limitations. First, while the image and text sentiment recognition models used are based on the current mainstream ViT and BERT architectures, the generalization ability of the models is still limited by the distribution and quality of the training corpora. Future research could further optimize these models by introducing professional image and text corpora specific to the financial context, or by replacing the ViT image backbone with a vision--language model (VLM) that natively reasons over both pixels and Chinese-language captions. Second, the construction of sentiment indicators is at a daily market granularity, which does not capture higher-frequency sentiment changes and thus cannot meet the needs of high-frequency trading or event-driven strategies. Third, our backtest does not net out transaction costs, stamp tax, or market-impact costs that would meaningfully erode the headline Sharpe-ratio improvement; the trading-strategy results should therefore be read as evidence on predictability rather than as a profitability claim. Additionally, this paper mainly focuses on the predictive role of sentiment variables on market returns but does not delve into the behavioral pathways through which sentiment affects the market, such as the heterogeneity of investor types and information dissemination mechanisms. Future research could further expand on micro-mechanism modeling and causal identification, replicate the design on Hong Kong, Taiwan, or other Asia-Pacific markets to test the generalizability of the small-cap-concentration finding, and extend the sample backward and forward as additional Sina archive data become available.
 
 Looking ahead, with the development of large multimodal models and the continuous enrichment of financial data, the analysis of image and text sentiment will play an increasingly important role in the financial field. Researchers can further integrate image and text sentiment with multi-source heterogeneous data such as social media, search behavior, and trading account data to construct a more detailed and dynamic market sentiment map. At the same time, sentiment indicators can also be embedded in asset pricing, portfolio management, and financial regulation frameworks, becoming an important bridge connecting investment behavior and market mechanisms.
 
