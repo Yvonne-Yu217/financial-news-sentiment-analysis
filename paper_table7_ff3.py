@@ -1,7 +1,10 @@
 """
 paper_table7_ff3.py
 Reproduces Table 7: Fama-French 3-Factor Regression of Sentiment Strategy (2014-2026)
-Factor data: CUFE fivefactor_daily.csv (uses MKT-RF, SMB, HML)
+Factor data: three_four_five_factor_daily/fivefactor_daily.csv
+   distributed by CUFE School of Finance (sf.cufe.edu.cn), constructed following
+   Fama-French (1993) methodology with underlying data from CSMAR/Guotai'an.
+   Uses MKT-RF, SMB, HML, and the bundled daily risk-free rate (1-year deposit rate).
 """
 import warnings; warnings.filterwarnings('ignore')
 import numpy as np, pandas as pd

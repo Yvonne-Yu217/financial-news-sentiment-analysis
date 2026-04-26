@@ -149,7 +149,7 @@ An important innovation in Chinese market sentiment research is the use of data 
 
 The media plays a unique role in the transmission of sentiment in the Chinese market. \citet{JRYJ201509012} constructed a tone indicator for media reports on IPO companies before their listing and found a significant negative correlation between negative media tone and the IPO underpricing rate. This suggests that media reports directly influence investor sentiment, which in turn affects market pricing efficiency. They also revealed that issuing companies and underwriters intentionally use media promotion to guide investor sentiment, demonstrating the special function of the media as a tool for sentiment guidance. Similarly, \citet{GLSJ202101014}, using machine learning-based text analysis, studied the contagion effect of media sentiment. They found that optimistic media sentiment significantly influences the optimistic bias of analyst forecasts and is transmitted to the market through two channels: "limited analyst attention" and "investor sentiment," ultimately affecting stock price volatility and tail risk. These findings collectively confirm the key role of the media in the formation and transmission of sentiment in the Chinese market.
 
-A complementary strand of work focuses on the institutional features that magnify sentiment effects in China. \citet{liu2019size} construct a Chinese version of the size and value factors and demonstrate that the standard Fama--French three-factor model requires non-trivial modification to fit the A-share market, motivating the use of CUFE three-factor data in our portfolio analysis. \citet{jones2025retail} document that the order-flow imbalance of retail investors carries strong predictive content for future cross-sectional returns in China, providing direct micro-level evidence for the channel through which sentiment-laden news can move prices. \citet{han2022chinese} examine 62 cross-sectional anomalies and find that anomalies are concentrated in stocks with binding short-sale constraints and during high-sentiment periods, consistent with the \citet{stambaugh2012short} mechanism in a Chinese setting.
+A complementary strand of work focuses on the institutional features that magnify sentiment effects in China. \citet{liu2019size} construct a Chinese version of the size and value factors and demonstrate that the standard Fama--French three-factor model requires non-trivial modification to fit the A-share market, providing a benchmark against which the CUFE-distributed Fama--French \citeyearpar{fama1993common} three factors used in our portfolio analysis can be compared. \citet{jones2025retail} document that the order-flow imbalance of retail investors carries strong predictive content for future cross-sectional returns in China, providing direct micro-level evidence for the channel through which sentiment-laden news can move prices. \citet{han2022chinese} examine 62 cross-sectional anomalies and find that anomalies are concentrated in stocks with binding short-sale constraints and during high-sentiment periods, consistent with the \citet{stambaugh2012short} mechanism in a Chinese setting.
 
 The most directly comparable contemporaneous study is \citet{zhang2025multimodal}, who construct multimodal sentiment indices on China News Service text and images using RoBERTa and an Inception-v3 backbone. Our paper differs from theirs along three axes that we view as complementary rather than competing: (i) sample length---our 2014--2026 sample (2{,}982 trading days) is roughly twice as long as theirs and includes the 2015 crash, the 2018 trade-tension drawdown, the 2020 COVID-19 shock, and the 2022 regulatory tightening; (ii) image backbone---we use a Vision Transformer to remain methodologically anchored to the most recent generation of computer-vision models, while \citet{zhang2025multimodal} use a CNN; and (iii) data source---we collect from Sina Financial News, an independent newswire, providing an out-of-sample replication of the multimodal-sentiment-China nexus on different underlying media. \citet{ren2025investor} similarly study image-based investor sentiment but apply few-shot learning to a U.S. NYT-image sample, leaving a clear gap for systematic ViT-based analysis on Chinese-language news media that this paper fills.
 
@@ -172,37 +172,6 @@ Second, this paper employs the latest deep learning technologies for sentiment a
 Third, this paper explores the relationship between text sentiment and image sentiment, analyzing the relative importance of these two sentiment sources in different market environments and for different types of stocks. This will enrich the theoretical understanding of multimodal sentiment analysis and offer new ideas for the construction of sentiment indicators.
 
 Fourth, this paper investigates the differences in the predictive power of sentiment indicators across various Chinese market indices. This will contribute to a deeper understanding of the mechanisms through which sentiment factors affect stocks with different characteristics, providing insights for the design of differentiated investment strategies.
-
-Table~\ref{tab:paper_comparison} situates this paper relative to the closest visual-sentiment studies in the literature. The comparison highlights three dimensions in which the present paper provides incremental evidence: an A-share market context (versus U.S. or global samples in \citealp{obaid2022picture}, \citealp{ren2025investor}, and \citealp{gu2026giffluence}), a Vision Transformer image backbone explicitly anchored to Obaid--Pukthuanthong's CNN approach, and a longer 2014--2026 sample window combined with the Campbell--Thompson plus Clark--West out-of-sample validation framework that the closest Chinese counterpart \citep{zhang2025multimodal} does not implement.
-
-\begin{table}[h!]
-    \centering
-    \caption{Comparison of This Paper with the Closest Visual-Sentiment Studies}
-    \label{tab:paper_comparison}
-    \setlength{\tabcolsep}{3pt}
-    \footnotesize
-    \begin{tabular}{lllll}
-    \toprule
-    Dimension & This paper & \citet{obaid2022picture} & \citet{zhang2025multimodal} & \citet{ren2025investor} \\
-    \midrule
-    Market               & China A-share          & U.S.\ (CRSP)           & China A-share         & U.S.\ (NYSE/NASDAQ)   \\
-    Sample period        & 2014--2026             & 2000--2020             & 2017--2024            & 2018--2023            \\
-    Photo source         & Sina Financial homepage & Wall Street Journal   & China News Service    & New York Times        \\
-    Text component       & Sina headlines (BERT)  & WSJ text (CoreNLP)     & CNS text (RoBERTa)    & Not used              \\
-    Image backbone       & ViT-B (replication-anchored) & Inception v3 CNN  & Inception v3 CNN      & DeepEMD (few-shot)    \\
-    OOS validation       & Campbell--Thompson + Clark--West & Not reported & Not reported          & Not reported          \\
-    Multiple-testing adj.\ & Bonferroni across 5 indices & N/A             & N/A                   & N/A                   \\
-    Headline finding     & PhotoPes$_{t-3}$ predicts ChiNext returns; small-cap concentration & Photo pessimism predicts U.S.\ market & Multimodal $>$ unimodal in-sample & Image sentiment delays into small caps \\
-    \bottomrule
-    \end{tabular}
-
-    \vspace{0.2cm}
-    \footnotesize
-    \textit{Note:} Field values for comparison studies are taken from the reported descriptions in their respective papers and may not capture every methodological detail. Empty cells (Not reported / N/A) indicate that the dimension was not the focus of the cited study.
-\end{table}
-
-
-
 
 
 
@@ -606,7 +575,7 @@ In the position allocation stage, this paper implements a straightforward approa
 
 To evaluate the effectiveness of the strategy, this paper selects the period from January 2014 to April 2026 as the backtesting period, using the CSI 500 Index as the benchmark. The backtesting process takes into account realistic trading conditions, including a 5-day rebalancing frequency and signal strength-based position sizing.
 
-The empirical results show that the sentiment-driven strategy outperformed the benchmark during the sample period. As shown in Table~\ref{tab:performance_comparison}, the strategy achieved an annualized return of 9.03\% with an annualized volatility of 24.86\%, resulting in a Sharpe ratio of 0.363. In contrast, the CSI 500 Index recorded an annualized return of 6.23\% with an annualized volatility of 25.14\%, leading to a Sharpe ratio of 0.248. The strategy demonstrated modestly superior risk control; its maximum drawdown was $-62.22$\%, compared to the benchmark's maximum drawdown of $-71.11$\%. We interpret these numbers as evidence on the existence of statistical predictability in a retail-dominated market with binding short-sale constraints and T+1 settlement, consistent with the noise-trader-with-frictions framework \citep{stambaugh2012short,han2022chinese}, rather than as a transaction-cost-net trading recommendation. The reported Sharpe ratio includes neither bid--ask spreads, stamp duties, nor market-impact costs, which historical estimates put at roughly 30--40~bps round-trip in the CSI 500 universe.
+The empirical results show that the sentiment-driven strategy outperformed the benchmark during the sample period. As shown in Table~\ref{tab:performance_comparison}, the strategy achieved an annualized return of 9.03\% with an annualized volatility of 24.86\%, resulting in an excess-return Sharpe ratio of 0.318. In contrast, the CSI 500 Index recorded an annualized return of 6.23\% with an annualized volatility of 25.14\%, leading to an excess-return Sharpe ratio of 0.200. Sharpe ratios are computed on excess returns ($r_t - r_{f,t}$), where $r_{f,t}$ is the daily Chinese risk-free rate (one-year deposit rate, converted to daily) bundled with the CUFE-distributed Chinese Fama--French three-factor file, for consistency with the FF3 alpha calculation in Table~\ref{tab:factor_regression}. The strategy demonstrated modestly superior risk control; its maximum drawdown was $-62.22$\%, compared to the benchmark's maximum drawdown of $-71.11$\%. We interpret these numbers as evidence on the existence of statistical predictability in a retail-dominated market with binding short-sale constraints and T+1 settlement, consistent with the noise-trader-with-frictions framework \citep{stambaugh2012short,han2022chinese}, rather than as a transaction-cost-net trading recommendation. The reported Sharpe ratio includes neither bid--ask spreads, stamp duties, nor market-impact costs, which historical estimates put at roughly 30--40~bps round-trip in the CSI 500 universe.
 
 \begin{table}[h!]
 \centering
@@ -620,7 +589,7 @@ Metrics & Sentiment-Driven Strategy & \textit{CSI 500 Index} \\
 \midrule
 Annualized Return & 9.03\% & 6.23\% \\
 Annualized Volatility & 24.86\% & 25.14\% \\
-Sharpe Ratio & 0.363 & 0.248 \\
+Sharpe Ratio (excess) & 0.318 & 0.200 \\
 Maximum Drawdown & $-$62.22\% & $-$71.11\% \\
 \bottomrule
 \end{tabular}
@@ -635,7 +604,7 @@ Figure~\ref{fig:investment_growth} illustrates the cumulative returns of the sen
     \label{fig:investment_growth}
 \end{figure}
 
-To further validate the effectiveness of the strategy, this paper conducted a Fama and French (\citeyear{fama1993common}) three-factor regression analysis on the strategy's returns using the CUFE Chinese three-factor data, with the results shown in Table~\ref{tab:factor_regression}. The regression results reveal that the strategy's alpha is 0.000236 (daily). While positive, this alpha is not statistically significant at conventional levels ($p$-value of 0.469), which suggests that the return outperformance is not robustly distinguishable from common factor exposure. The HML coefficient is $-0.103$ and is marginally significant at the 10\% level, indicating a weak tilt toward growth-oriented stocks. The very low $R^2$ of 0.0048 reflects that the strategy's returns are largely orthogonal to the common three factors.
+To further validate the effectiveness of the strategy, this paper conducted a Fama and French (\citeyear{fama1993common}) three-factor regression analysis on the strategy's returns using the CUFE-distributed Chinese Fama--French three factors, with the results shown in Table~\ref{tab:factor_regression}. The regression results reveal that the strategy's alpha is 0.000236 (daily). While positive, this alpha is not statistically significant at conventional levels ($p$-value of 0.469), which suggests that the return outperformance is not robustly distinguishable from common factor exposure. The HML coefficient is $-0.103$ and is marginally significant at the 10\% level, indicating a weak tilt toward growth-oriented stocks. The very low $R^2$ of 0.0048 reflects that the strategy's returns are largely orthogonal to the common three factors.
 
 \begin{table}[h!]
     \centering
@@ -659,7 +628,7 @@ To further validate the effectiveness of the strategy, this paper conducted a Fa
 
     \vspace{0.2cm}
     \footnotesize
-    \textit{Note:} $^{***}$, $^{**}$, and $^{*}$ indicate significance at the 1\%, 5\%, and 10\% levels, respectively. Fama--French three factors (MKT, SMB, HML) are obtained from the CUFE Chinese Asset Management Research Center database. The regression uses daily excess returns (strategy return minus risk-free rate) over the period 2014-01-06 to 2026-02-06 with Newey-West HAC standard errors (5 lags).
+    \textit{Note:} $^{***}$, $^{**}$, and $^{*}$ indicate significance at the 1\%, 5\%, and 10\% levels, respectively. Fama--French three factors (MKT, SMB, HML) and the daily risk-free rate are obtained from the CUFE-distributed Chinese factor file (School of Finance, Central University of Finance and Economics; underlying market data from CSMAR), constructed following the methodology of \citet{fama1993common}. The regression uses daily excess returns (strategy return minus risk-free rate) over the period 2014-01-06 to 2026-02-06 with Newey-West HAC standard errors (5 lags).
 \end{table}
 
 %--------------------------------------------------------------------------
@@ -846,6 +815,50 @@ Because we run $\textit{PhotoPes}_{t-3}$ tests across five indices, the headline
 \textit{Note:} This table reports robustness checks for the impact of PhotoPes on market returns. Panel A uses PhotoPes without winsorization. Panel B uses volatility-adjusted returns. Panel C removes extreme market returns (top and bottom 0.5\%). t-statistics are reported in parentheses. *, **, *** indicate significance at the 10\%, 5\%, and 1\% levels, respectively.
 \end{table}
 
+\subsection{Visual Domain Shift: ViT Stability Across Image-Quality Strata and Years}
+\label{sec:vit_robustness}
+A natural concern with our PhotoPes indicator is that the ViT classifier is trained on the social-photo distribution of \citet{you2015robust} and applied out-of-domain to Sina financial-news photos. To evaluate the consequences of this distribution shift, we construct a \textbf{stratified evaluation panel of 6{,}107 Sina images} drawn approximately uniformly across calendar years (about 500 images per year for 2015--2026, plus 107 from 2014). Each image in this panel has been independently scored on a [0,1] quality scale by \textbf{three frontier multimodal large language models} (GPT-4o-mini, Claude Sonnet 4.6, and Gemini 3 Pro Preview) using identical prompts; majority-vote labels classify each image as \texttt{quality\_pass} (clear, interpretable financial photo), \texttt{quality\_review\_needed}, or \texttt{quality\_fail\_candidate} (text-heavy infographic, blurry, or otherwise unsuitable). We then re-evaluate our production ViT on every image and compare the distribution of pessimism scores conditional on stratum and year.
+
+Table~\ref{tab:vit_quality_robustness} reports the results. ViT predicts a higher mean pessimism on \texttt{quality\_fail} images (0.260) than on \texttt{quality\_pass} images (0.158); the difference is statistically significant (Welch's $t = -12.07$, $p < 10^{-32}$; Kolmogorov--Smirnov $D = 0.134$, $p < 10^{-13}$), with a small-to-moderate standardised effect size of Cohen's $d \approx 0.34$. On the \emph{frontier-LLM consensus subset}---the 949 images on which all three models agree on the same quality label---the gap between \texttt{quality\_pass} (0.185) and \texttt{quality\_fail} (0.408) widens to 0.223, roughly $2.2$ times the analogous gap of 0.102 in the full panel. We read this pattern as evidence that ViT responds to systematic visual content rather than to noise: when frontier general-purpose models converge on the verdict that an image is unsuitable for sentiment inference (text-heavy infographic, blurry, or otherwise degraded), our specialised ViT also produces a noticeably different score distribution. The share of \emph{decisive} predictions (output probability $\hat{\pi}<0.2$ or $\hat{\pi}>0.8$) is similar across quality strata in the full panel (82\%--88\%) and in the consensus subset (77\%--83\%), indicating that ViT does not collapse onto an uninformative neutral score on out-of-distribution images.
+
+Panel C of Table~\ref{tab:vit_quality_robustness} reports temporal stability: across the 13 yearly strata of the \texttt{quality\_pass} subset, the cross-year standard deviation of the mean ViT pessimism score is 0.029, with year-level means clustered in the range $[0.094, 0.206]$. This magnitude is of the same order as the per-year sampling noise implied by the within-year SD ($\approx 0.21$) and per-year sample sizes (8--169), so we read the result as consistent with no meaningful temporal drift in ViT predictions over the 2014--2026 sample.
+
+\begin{table}[h!]
+    \centering
+    \caption{ViT Pessimism Distribution by Image-Quality Stratum and Year (2014--2026)}
+    \label{tab:vit_quality_robustness}
+    \setlength{\tabcolsep}{6pt}
+    \small
+    \begin{tabular}{lcccc}
+    \toprule
+    Stratum & N & Mean & SD & \% decisive \\
+    \midrule
+    \multicolumn{5}{l}{\textit{Panel A: Full annotation panel ($N = 6{,}102$ successful inferences)}} \\
+    \midrule
+    \texttt{quality\_pass\_auto\_accept}   & 1{,}253 & 0.158 & 0.213 & 83.6\% \\
+    \texttt{quality\_review\_needed}       & 1{,}812 & 0.216 & 0.308 & 87.9\% \\
+    \texttt{quality\_fail\_candidate}      & 3{,}037 & 0.260 & 0.327 & 82.8\% \\
+    \midrule
+    \multicolumn{5}{l}{\textit{Panel B: Frontier-LLM consensus subset (3-of-3 agreement, $N = 949$)}} \\
+    \midrule
+    \texttt{quality\_pass\_auto\_accept}   & \phantom{0,}249 & 0.185 & 0.216 & 77.1\% \\
+    \texttt{quality\_review\_needed}       & \phantom{0,}295 & 0.268 & 0.330 & 83.4\% \\
+    \texttt{quality\_fail\_candidate}      & \phantom{0,}405 & 0.408 & 0.379 & 76.8\% \\
+    \midrule
+    \multicolumn{5}{l}{\textit{Panel C: Year stability on \texttt{quality\_pass} subset (year-level summary)}} \\
+    \midrule
+    Cross-year mean range            & \multicolumn{4}{l}{$[0.094,\ 0.206]$ across 13 calendar years} \\
+    Cross-year SD of yearly means    & \multicolumn{4}{l}{$0.029$} \\
+    Welch's $t$ (pass vs.~fail)      & \multicolumn{4}{l}{$-12.07$ \ ($p = 6.5 \times 10^{-33}$)} \\
+    KS distance (pass vs.~fail)      & \multicolumn{4}{l}{$0.134$ \ ($p = 2.1 \times 10^{-14}$)} \\
+    \bottomrule
+    \end{tabular}
+
+    \vspace{0.2cm}
+    \footnotesize
+    \textit{Note:} The annotation panel comprises 6{,}107 Sina financial-news images drawn approximately uniformly across calendar years 2014--2026; each image was scored on a [0,1] quality scale by GPT-4o-mini, Claude Sonnet 4.6, and Gemini 3 Pro Preview using identical prompts, with majority-vote labels assigned to each image. ``\% decisive'' is the share of ViT predictions with pessimism probability outside $[0.2, 0.8]$. Panel B restricts to images on which all three frontier models agree. Panel C summarises the temporal stability across the 13 calendar years on the \texttt{quality\_pass\_auto\_accept} subset and reports two-sample tests of the difference between the \texttt{quality\_pass} and \texttt{quality\_fail} pessimism distributions.
+\end{table}
+
 
 
 
@@ -864,7 +877,7 @@ The research findings show that photo sentiment has a significant impact on mark
 
 Text sentiment ($\text{TextPes}_{t-3}$) shows complementary predictive patterns, particularly for the SZSE Composite (SZCOMP) and ChiNext indices, though with somewhat weaker statistical significance in this extended sample. The conditional analysis further shows that these predictive effects are concentrated in high-volatility market states: during high-volatility periods, both $\text{PhotoPes}_{t-3}$ and $\text{TextPes}_{t-3}$ are significant predictors of returns on the SZSE Composite, ChiNext, and CSI 500, whereas neither indicator exhibits meaningful predictive power during low-volatility periods.
 
-In terms of investment applications, this paper constructs a rule-based trading exercise that converts the in-sample predictability into an executable long-only signal. The exercise produces a higher Sharpe ratio than the CSI 500 benchmark (0.363 versus 0.248) and a smaller maximum drawdown, but the corresponding three-factor alpha relative to the \citet{liu2019size} CUFE factors is positive yet statistically insignificant. We interpret this as further evidence consistent with the noise-trader-with-frictions framework of \citet{stambaugh2012short} in a market where short-selling is constrained, rather than as a recommendation of a transaction-cost-net trading strategy; the reported figures do not include bid--ask spreads, stamp tax, or market-impact costs.
+In terms of investment applications, this paper constructs a rule-based trading exercise that converts the in-sample predictability into an executable long-only signal. The exercise produces a higher excess-return Sharpe ratio than the CSI 500 benchmark (0.318 versus 0.200) and a smaller maximum drawdown, but the corresponding three-factor alpha relative to the CUFE-distributed Chinese Fama--French \citeyearpar{fama1993common} factors is positive yet statistically insignificant. We interpret this as further evidence consistent with the noise-trader-with-frictions framework of \citet{stambaugh2012short} in a market where short-selling is constrained, rather than as a recommendation of a transaction-cost-net trading strategy; the reported figures do not include bid--ask spreads, stamp tax, or market-impact costs.
 
 Although this paper has conducted systematic explorations in methodology and application, it still has certain limitations. First, while the image and text sentiment recognition models used are based on the current mainstream ViT and BERT architectures, the generalization ability of the models is still limited by the distribution and quality of the training corpora. Future research could further optimize these models by introducing professional image and text corpora specific to the financial context, or by replacing the ViT image backbone with a vision--language model (VLM) that natively reasons over both pixels and Chinese-language captions. Second, the construction of sentiment indicators is at a daily market granularity, which does not capture higher-frequency sentiment changes and thus cannot meet the needs of high-frequency trading or event-driven strategies. Third, our backtest does not net out transaction costs, stamp tax, or market-impact costs that would meaningfully erode the headline Sharpe-ratio improvement; the trading-strategy results should therefore be read as evidence on predictability rather than as a profitability claim. Additionally, this paper mainly focuses on the predictive role of sentiment variables on market returns but does not delve into the behavioral pathways through which sentiment affects the market, such as the heterogeneity of investor types and information dissemination mechanisms. Future research could further expand on micro-mechanism modeling and causal identification, replicate the design on Hong Kong, Taiwan, or other Asia-Pacific markets to test the generalizability of the small-cap-concentration finding, and extend the sample backward and forward as additional Sina archive data become available.
 
