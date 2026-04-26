@@ -189,8 +189,9 @@ This section will introduce the construction methods for the news photo and text
 We adopt the Vision Transformer (ViT) of \citet{dosovitskiy2020image} as our image-sentiment backbone. Our motivation is replicability and methodological transparency rather than chasing the current state of the art: ViT is a deterministic, frozen-weight model whose behavior on a given image is reproducible by other researchers, and it is the natural successor to the Inception (v3) CNN used by \citet{obaid2022picture} in the original \emph{photo pessimism} setting. Anchoring our image classifier to a published, openly-available architecture rather than to a vision--language model whose API and weights may change makes our \textit{PhotoPes} indicator auditable across time and across research groups. Unlike traditional convolutional neural networks (CNNs), ViT first divides an input image into fixed-size patches, then linearly maps these patches into a sequence of tokens. These tokens are processed by a transformer encoder and then used for downstream vision tasks. Figure~\ref{fig:vit} illustrates the overall architecture.
 
 \begin{figure}[h!]
-    \includegraphics[width=1\textwidth]{figures/vit_architecture.png}
-    \caption{Detailed ViT Architecture}
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/vit_architecture.png}
+    \caption{Vision Transformer architecture. The model partitions an input image into fixed-size patches, linearly projects them into token embeddings, prepends a learnable [\texttt{class}] token, adds positional embeddings, and feeds the resulting sequence through a stack of standard Transformer encoder blocks (right panel). Image source: \citet{dosovitskiy2020image}, Figure~1, reproduced under arXiv non-exclusive academic-use license.}
     \label{fig:vit}
 \end{figure}
 
