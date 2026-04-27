@@ -816,52 +816,6 @@ Because we run $\textit{PhotoPes}_{t-3}$ tests across five indices, the headline
 \textit{Note:} This table reports robustness checks for the impact of PhotoPes on market returns. Panel A uses PhotoPes without winsorization. Panel B uses volatility-adjusted returns. Panel C removes extreme market returns (top and bottom 0.5\%). t-statistics are reported in parentheses. *, **, *** indicate significance at the 10\%, 5\%, and 1\% levels, respectively.
 \end{table}
 
-\subsection{Visual Domain Shift: ViT Stability Across Image-Quality Strata and Years}
-A natural concern with our PhotoPes indicator is that the ViT classifier is trained on the social-photo distribution of \citet{you2015robust} and applied out-of-domain to Sina financial-news photos. To evaluate the consequences of this distribution shift, we construct a \textbf{stratified evaluation panel of 6{,}107 Sina images} drawn approximately uniformly across calendar years (about 500 images per year for 2015--2026, plus 107 from 2014). Each image in this panel has been independently scored on a [0,1] quality scale by \textbf{three frontier multimodal large language models} (GPT-4o-mini, Claude Sonnet 4.6, and Gemini 3 Pro Preview) using identical prompts; majority-vote labels classify each image as \texttt{quality\_pass} (clear, interpretable financial photo), \texttt{quality\_review\_needed}, or \texttt{quality\_fail\_candidate} (text-heavy infographic, blurry, or otherwise unsuitable). We then re-evaluate our production ViT on every image and compare the distribution of pessimism scores conditional on stratum and year.
-
-Table~\ref{tab:vit_quality_robustness} reports the results. ViT predicts a higher mean pessimism on \texttt{quality\_fail} images (0.260) than on \texttt{quality\_pass} images (0.158); the difference is statistically significant (Welch's $t = -12.07$, $p < 10^{-32}$; Kolmogorov--Smirnov $D = 0.134$, $p < 10^{-13}$), with a small-to-moderate standardized effect size of Cohen's $d \approx 0.34$. On the \emph{frontier-LLM consensus subset}---the 949 images on which all three models agree on the same quality label---the gap between \texttt{quality\_pass} (0.185) and \texttt{quality\_fail} (0.408) widens to 0.223, roughly $2.2$ times the analogous gap of 0.102 in the full panel. We read this pattern as evidence that ViT responds to systematic visual content rather than to noise: when frontier general-purpose models converge on the verdict that an image is unsuitable for sentiment inference (text-heavy infographic, blurry, or otherwise degraded), our specialized ViT also produces a noticeably different score distribution. The share of \emph{decisive} predictions (output probability $\hat{\pi}<0.2$ or $\hat{\pi}>0.8$) is similar across quality strata in the full panel (82\%--88\%) and in the consensus subset (77\%--83\%), indicating that ViT does not collapse onto an uninformative neutral score on out-of-distribution images.
-
-Panel C of Table~\ref{tab:vit_quality_robustness} reports temporal stability: across the 13 yearly strata of the \texttt{quality\_pass} subset, the cross-year standard deviation of the mean ViT pessimism score is 0.029, with year-level means clustered in the range $[0.094, 0.206]$. This magnitude is of the same order as the per-year sampling noise implied by the within-year SD ($\approx 0.21$) and per-year sample sizes (8--169), so we read the result as consistent with no meaningful temporal drift in ViT predictions over the 2014--2026 sample.
-
-\begin{table}[h!]
-    \centering
-    \caption{ViT Pessimism Distribution by Image-Quality Stratum and Year (2014--2026)}
-    \label{tab:vit_quality_robustness}
-    \setlength{\tabcolsep}{6pt}
-    \small
-    \begin{tabular}{lcccc}
-    \toprule
-    Stratum & N & Mean & SD & \% decisive \\
-    \midrule
-    \multicolumn{5}{l}{\textit{Panel A: Full annotation panel ($N = 6{,}102$ successful inferences)}} \\
-    \midrule
-    \texttt{quality\_pass\_auto\_accept}   & 1{,}253 & 0.158 & 0.213 & 83.6\% \\
-    \texttt{quality\_review\_needed}       & 1{,}812 & 0.216 & 0.308 & 87.9\% \\
-    \texttt{quality\_fail\_candidate}      & 3{,}037 & 0.260 & 0.327 & 82.8\% \\
-    \midrule
-    \multicolumn{5}{l}{\textit{Panel B: Frontier-LLM consensus subset (3-of-3 agreement, $N = 949$)}} \\
-    \midrule
-    \texttt{quality\_pass\_auto\_accept}   & \phantom{0,}249 & 0.185 & 0.216 & 77.1\% \\
-    \texttt{quality\_review\_needed}       & \phantom{0,}295 & 0.268 & 0.330 & 83.4\% \\
-    \texttt{quality\_fail\_candidate}      & \phantom{0,}405 & 0.408 & 0.379 & 76.8\% \\
-    \midrule
-    \multicolumn{5}{l}{\textit{Panel C: Year stability on \texttt{quality\_pass} subset (year-level summary)}} \\
-    \midrule
-    Cross-year mean range            & \multicolumn{4}{l}{$[0.094,\ 0.206]$ across 13 calendar years} \\
-    Cross-year SD of yearly means    & \multicolumn{4}{l}{$0.029$} \\
-    Welch's $t$ (pass vs.~fail)      & \multicolumn{4}{l}{$-12.07$ \ ($p = 6.5 \times 10^{-33}$)} \\
-    KS distance (pass vs.~fail)      & \multicolumn{4}{l}{$0.134$ \ ($p = 2.1 \times 10^{-14}$)} \\
-    \bottomrule
-    \end{tabular}
-
-    \vspace{0.2cm}
-    \footnotesize
-    \textit{Note:} The annotation panel comprises 6{,}107 Sina financial-news images drawn approximately uniformly across calendar years 2014--2026; each image was scored on a [0,1] quality scale by GPT-4o-mini, Claude Sonnet 4.6, and Gemini 3 Pro Preview using identical prompts, with majority-vote labels assigned to each image. ``\% decisive'' is the share of ViT predictions with pessimism probability outside $[0.2, 0.8]$. Panel B restricts to images on which all three frontier models agree. Panel C summarises the temporal stability across the 13 calendar years on the \texttt{quality\_pass\_auto\_accept} subset and reports two-sample tests of the difference between the \texttt{quality\_pass} and \texttt{quality\_fail} pessimism distributions.
-\end{table}
-
-
-
-
 
 
 
