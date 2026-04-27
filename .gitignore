@@ -114,3 +114,17 @@ ai_image_annotation/run_artifacts/
 /backups/
 overleaf_upload*.zip
 *_executed.ipynb
+
+# Chinese-language local-only version of the paper (not for repo)
+paper/main_zh.tex
+paper/main_zh.pdf
+paper/main_zh.aux
+paper/main_zh.bbl
+paper/main_zh.blg
+paper/main_zh.fls
+paper/main_zh.fdb_latexmk
+paper/main_zh.log
+paper/main_zh.out
+paper/main_zh.toc
+paper/main_zh.synctex.gz
+paper/main_zh.xdv
