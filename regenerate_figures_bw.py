@@ -1,8 +1,11 @@
 """
 Regenerate all paper figures in black & white, 300 DPI, AEA-compatible font sizes.
-Saves to the paper's Image/chap03/ folder.
+Output (default): paper/figures/ inside this repo.
+Override with --out-dir <path> if needed.
 """
+import argparse
 import json
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -35,17 +38,10 @@ rcParams.update({
     'axes.facecolor':   'white',
 })
 
-IMG_OUT = ("/Volumes/Data_Drive/research0322226/"
-           "Quantifying_Investor_Sentiment_with_Multimodal_Data_in_the_Chinese_Stock_Market/"
-           "Image/chap03")
-
-DATA_OLD = ("/Volumes/Data_Drive/research0322226/"
-            "financial-news-sentiment-analysis/results/"
-            "merged_market_sentiment_data_old.csv")
-
-METRICS_JSON = ("/Volumes/Data_Drive/research0322226/"
-                "financial-news-sentiment-analysis/run_artifacts/"
-                "8vit_transferlearning/8vit_training_metrics.json")
+SCRIPT_DIR = Path(__file__).resolve().parent
+IMG_OUT      = SCRIPT_DIR / "paper" / "figures"
+DATA_OLD     = SCRIPT_DIR / "results" / "merged_market_sentiment_data_old.csv"
+METRICS_JSON = SCRIPT_DIR / "run_artifacts" / "8vit_transferlearning" / "8vit_training_metrics.json"
 
 # ═══════════════════════════════════════════════════
 # Figure 1: Training & Validation Accuracy (B&W)
@@ -73,7 +69,7 @@ def fig_training_accuracy():
     ax.set_ylim(60, 102)
 
     plt.tight_layout()
-    out = f"{IMG_OUT}/training_accuracy.png"
+    out = IMG_OUT / "training_accuracy.png"
     fig.savefig(out)
     plt.close(fig)
     print(f"Saved: {out}")
@@ -121,7 +117,7 @@ def fig_monthly_sentiment():
     plt.setp(ax.get_xticklabels(), rotation=0, ha='center')
 
     plt.tight_layout()
-    out = f"{IMG_OUT}/monthly_sentiment_trends.png"
+    out = IMG_OUT / "monthly_sentiment_trends.png"
     fig.savefig(out)
     plt.close(fig)
     print(f"Saved: {out}")
@@ -180,7 +176,7 @@ def fig_cumulative_returns():
     plt.setp(ax.get_xticklabels(), rotation=0, ha='center')
 
     plt.tight_layout()
-    out = f"{IMG_OUT}/cumulative_returns_old.png"
+    out = IMG_OUT / "cumulative_returns_old.png"
     fig.savefig(out)
     plt.close(fig)
     print(f"Saved: {out}")
@@ -188,7 +184,15 @@ def fig_cumulative_returns():
 
 if __name__ == '__main__':
     import matplotlib.dates
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--out-dir', type=Path, default=IMG_OUT,
+                        help=f"Output directory (default: {IMG_OUT})")
+    args = parser.parse_args()
+    IMG_OUT = args.out_dir
+    IMG_OUT.mkdir(parents=True, exist_ok=True)
+
     fig_training_accuracy()
     fig_monthly_sentiment()
     fig_cumulative_returns()
-    print("All figures regenerated in B&W at 300 DPI.")
+    print(f"All figures regenerated in B&W at 300 DPI -> {IMG_OUT}")
