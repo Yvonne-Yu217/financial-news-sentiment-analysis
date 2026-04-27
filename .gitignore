@@ -142,6 +142,9 @@ results/merged_market_sentiment_data_v2.csv
 results/cumulative_returns_v2.csv
 results/regression_output_v2/
 
+# Proofreading / review reports (local-only artifacts)
+quality_reports/
+
 # Chinese-language local-only version of the paper (not for repo)
 paper/main_zh.tex
 paper/main_zh.pdf
