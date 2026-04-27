@@ -115,6 +115,33 @@ ai_image_annotation/run_artifacts/
 overleaf_upload*.zip
 *_executed.ipynb
 
+# v2 transfer-learning pipeline (LLM-supervised ViT) — local-only experiment.
+# These scripts implement an alternative ViT trained on LLM-consensus labels;
+# see §4.2 of the paper for the held-out validation that the PCNN-trained
+# ViT (which IS in the repo) outperforms this v2 variant. The v2 pipeline is
+# kept locally for reproducibility but is not part of the published artifact.
+ai_image_annotation/build_sentiment_training_dataset.py
+ai_image_annotation/8vit_transferlearning_v2.py
+ai_image_annotation/9sentiment_analyzer_v2.py
+ai_image_annotation/10calculate_daily_photopes_v2.py
+ai_image_annotation/13merge_data_and_calculate_returns_v2.py
+ai_image_annotation/regression_tables_v2.py
+ai_image_annotation/paper_table5_conditional_v2.py
+ai_image_annotation/paper_table6_portfolio_v2.py
+ai_image_annotation/paper_table7_ff3_v2.py
+ai_image_annotation/paper_table8_oos_v2.py
+ai_image_annotation/paper_table9_robustness_v2.py
+ai_image_annotation/run_v2_pipeline.sh
+training_dataset_sentiment/
+improved_vit_sentiment_model_v2.pth
+training_metrics_v2.npy
+training_accuracy_v2.png
+training_loss_v2.png
+results/weighted_photopes_v2.csv
+results/merged_market_sentiment_data_v2.csv
+results/cumulative_returns_v2.csv
+results/regression_output_v2/
+
 # Chinese-language local-only version of the paper (not for repo)
 paper/main_zh.tex
 paper/main_zh.pdf
