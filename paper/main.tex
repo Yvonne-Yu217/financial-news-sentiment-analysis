@@ -576,7 +576,11 @@ In the position allocation stage, this paper implements a straightforward approa
 
 To evaluate the effectiveness of the strategy, this paper selects the period from January 2014 to April 2026 as the backtesting period, using the CSI 500 Index as the benchmark. The backtesting process takes into account realistic trading conditions, including a 5-day rebalancing frequency and signal strength-based position sizing.
 
-The empirical results show that the sentiment-driven strategy outperformed the benchmark during the sample period. As shown in Table~\ref{tab:performance_comparison}, the strategy achieved an annualized return of 9.03\% with an annualized volatility of 24.86\%, resulting in an excess-return Sharpe ratio of 0.318. In contrast, the CSI 500 Index recorded an annualized return of 6.23\% with an annualized volatility of 25.14\%, leading to an excess-return Sharpe ratio of 0.200. Sharpe ratios are computed on excess returns ($r_t - r_{f,t}$), where $r_{f,t}$ is the daily Chinese risk-free rate (one-year deposit rate, converted to daily) bundled with the CUFE-distributed Chinese Fama--French three-factor file, for consistency with the FF3 alpha calculation in Table~\ref{tab:factor_regression}. The strategy demonstrated modestly superior risk control; its maximum drawdown was $-62.22$\%, compared to the benchmark's maximum drawdown of $-71.11$\%. We interpret these numbers as evidence on the existence of statistical predictability in a retail-dominated market with binding short-sale constraints and T+1 settlement, consistent with the noise-trader-with-frictions framework \citep{stambaugh2012short,han2022chinese}, rather than as a transaction-cost-net trading recommendation.
+The empirical results show that the sentiment-driven strategy delivered a higher gross-of-cost Sharpe ratio than the benchmark during the sample period. As shown in Table~\ref{tab:performance_comparison}, the strategy achieved an annualized return of 9.03\% with an annualized volatility of 24.86\%, resulting in an excess-return Sharpe ratio of 0.318. In contrast, the CSI 500 Index recorded an annualized return of 6.23\% with an annualized volatility of 25.14\%, leading to an excess-return Sharpe ratio of 0.200. Sharpe ratios are computed on excess returns ($r_t - r_{f,t}$), where $r_{f,t}$ is the daily Chinese risk-free rate (one-year deposit rate, converted to daily) bundled with the CUFE-distributed Chinese Fama--French three-factor file. The strategy's maximum drawdown was $-62.22$\%, compared to the benchmark's $-71.11$\%.
+
+Two referee-mandated robustness exercises sharply qualify these gross-of-cost numbers. First, we test whether the observed Sharpe-ratio gap of $\Delta SR = 0.118$ is statistically distinguishable from zero. A stationary block-bootstrap \citep{politis1994stationary} with block length 5 (matching the rebalance frequency) and $B=10{,}000$ replications gives a 95\% percentile confidence interval for $\Delta SR$ of $[-0.75, +0.97]$ and a one-sided bootstrap $p$-value of $0.389$ for the null $\Delta SR \le 0$. The parametric \citet{ledoit2008robust} / Jobson-Korkie / Memmel test gives $z = 0.30$, two-sided $p = 0.77$. \textbf{The Sharpe gap is not statistically distinguishable from zero under any standard inference criterion}; the apparent outperformance lies well within the bootstrap noise band for non-overlapping rule-based strategies of this type.
+
+Second, we re-compute strategy Sharpe and cumulative value at a grid of round-trip transaction costs $\in \{0, 10, 20, 30, 40, 50\}$ basis points, charged each time the position changes. Table~\ref{tab:performance_comparison} reports the results. The Sharpe ratio falls below the benchmark's $0.200$ at approximately $17$ bps round-trip, well within the realistic range for Chinese A-share retail trading (5 bps stamp duty on sells alone, plus bid--ask spreads of $20$--$30$ bps and market-impact costs in small-cap names). At $40$ bps round-trip the strategy Sharpe is essentially zero ($0.047$) and the cumulative value of a 1 RMB initial investment falls below 1 RMB. We interpret these results as evidence that the strategy has \textbf{no} robust outperformance once realistic Chinese A-share frictions are accounted for, and we retain the discussion in this subsection as evidence on the existence of \emph{statistical} predictability rather than as a tradable result.
 
 \begin{table}[h!]
 \centering
@@ -584,20 +588,22 @@ The empirical results show that the sentiment-driven strategy outperformed the b
 \label{tab:performance_comparison}
     \setlength{\tabcolsep}{4pt}
     \small
-\begin{tabular}{lcc}
+\begin{tabular}{lccccccc}
 \toprule
-Metrics & Sentiment-Driven Strategy & \textit{CSI 500 Index} \\
+& \multicolumn{6}{c}{Sentiment Strategy under Round-Trip Cost (bps)} & \\
+\cmidrule(lr){2-7}
+Metrics & 0 & 10 & 20 & 30 & 40 & 50 & \textit{CSI 500} \\
 \midrule
-Annualized Return & 9.03\% & 6.23\% \\
-Annualized Volatility & 24.86\% & 25.14\% \\
-Sharpe Ratio (excess) & 0.318 & 0.200 \\
-Maximum Drawdown & $-$62.22\% & $-$71.11\% \\
+Annualized Return     & 9.03\%   & 7.34\%   & 5.66\%   & 3.97\%   & 2.28\%   & 0.60\%   & 6.23\% \\
+Annualized Volatility & 24.86\%  & 24.86\%  & 24.87\%  & 24.88\%  & 24.90\%  & 24.93\%  & 25.14\% \\
+Sharpe (excess)       & 0.318    & 0.250    & 0.182    & 0.115    & 0.047    & $-$0.021 & 0.200 \\
+1 RMB grows to        & 2.020    & 1.655    & 1.355    & 1.110    & 0.908    & 0.744    & 1.420 \\
 \bottomrule
 \end{tabular}
 
 \vspace{0.2cm}
 \footnotesize
-\textit{Note:} Strategy construction is described in the preceding subsection (\textit{Trading Strategy as Noise-Trader-with-Frictions Evidence}): a 90-day rolling-window combined sentiment signal $0.80\,\textit{PhotoPes}_{t-3}+0.20\,\textit{TextPes}_{t-3}$ generates long, short, or neutral positions when the signal crosses the 20th/80th rolling percentiles, with rebalancing every five trading days and signal-strength position sizing. Backtest period is 2014-01-06 to 2026-04-30. Sharpe ratios are computed on excess returns, $(r_t - r_{f,t})/\sigma(r_t)$, where $r_{f,t}$ is the daily Chinese risk-free rate from the CUFE-distributed Fama--French three-factor file. Reported figures do not include bid--ask spreads, stamp tax, or market-impact costs and should be interpreted as evidence on predictability rather than as a profitability claim.
+\textit{Note:} Strategy construction is described in the preceding subsection: a 90-day rolling-window combined sentiment signal $0.80\,\textit{PhotoPes}_{t-3}+0.20\,\textit{TextPes}_{t-3}$ generates long, short, or neutral positions when the signal crosses the 20th/80th rolling percentiles, with rebalancing every five trading days. Backtest period is 2014-01-06 to 2026-04-30. Round-trip transaction costs are charged each time the position changes (with one-way cost = round-trip / 2). Sharpe ratios are computed on excess returns, $(r_t - r_{f,t})/\sigma(r_t)$, where $r_{f,t}$ is the daily Chinese risk-free rate from the CUFE-distributed Fama--French three-factor file. The strategy Sharpe falls below the CSI 500 benchmark's $0.200$ at approximately 17 bps round-trip; at 40 bps the strategy underperforms a buy-and-hold investor in CSI 500 in cumulative-value terms. The 0-bp column corresponds to the gross-of-cost figures reported in earlier drafts of this paper. The bootstrap analysis in the body shows that even the gross-of-cost gap ($\Delta SR = 0.118$) is not statistically distinguishable from zero (95\% percentile CI $[-0.75, +0.97]$, one-sided $p = 0.39$).
 \end{table}
 
 Figure~\ref{fig:investment_growth} illustrates the cumulative returns of the sentiment-driven strategy and the CSI 500 Index. The figure confirms the strategy's outperformance over the sample period. If 1 RMB were invested at the beginning of 2014, it would have grown to approximately 2.02 RMB by April 2026 under the sentiment-driven strategy, compared to 1.42 RMB under the CSI 500 benchmark.
@@ -756,6 +762,32 @@ To exclude the potential bias caused by extreme market returns, this paper remov
 
 Under these three different settings, the significant negative coefficient of $\text{PhotoPes}_{t-3}$ remains consistent for the ChiNext index, which represents growth-oriented and small-to-mid-cap stocks. This series of checks confirms that the negative predictive power of the photo sentiment indicator is a robust phenomenon, particularly pronounced in markets where investor sentiment plays a more prominent role in asset pricing.
 
+We also examine sensitivity to the Newey--West HAC bandwidth, which is set to 5 lags throughout the main tables to match the right-hand-side lag depth. Because the choice of bandwidth equal to the regression lag depth could in principle understate residual autocorrelation, Table~\ref{tab:nw_bandwidth} re-runs the headline ChiNext PhotoPes$_{t-3}$ regression at a grid of bandwidths $\{5, 10, 15, 22\}$ together with the data-driven \citet{newey1994automatic} and \citet{andrews1991heteroskedasticity} plug-in selectors. The point estimate is unchanged across columns; the $t$-statistic varies smoothly from $-2.93$ at the Andrews(1991) plug-in (1 lag) to $-2.45$ at one trading month (22 lags), and the headline ChiNext result remains significant at the 1\% level for bandwidths up to 15 lags and at the 5\% level at 22 lags. The data-driven \citet{newey1994automatic} bandwidth of 8 lags yields $|t|=2.75$ at the 1\% level, very close to the bandwidth-5 value reported in Table~\ref{tab:PhotoPes_regression_results}.
+
+\begin{table}[h!]
+    \centering
+    \caption{ChiNext PhotoPes$_{t-3}$ -- Newey-West Bandwidth Sensitivity (2014--2026)}
+    \label{tab:nw_bandwidth}
+    \setlength{\tabcolsep}{6pt}
+    \small
+    \begin{tabular}{lcccc}
+    \toprule
+    Selector & Bandwidth & Coefficient & $t$-stat & $p$-value \\
+    \midrule
+    NW(5) -- main spec       & 5  & $-$0.001263 & $-$2.830 & 0.0047$^{***}$ \\
+    NW(10)                   & 10 & $-$0.001263 & $-$2.696 & 0.0070$^{***}$ \\
+    NW(15)                   & 15 & $-$0.001263 & $-$2.584 & 0.0098$^{***}$ \\
+    NW(22) -- one month      & 22 & $-$0.001263 & $-$2.451 & 0.0142$^{**}$  \\
+    \citet{newey1994automatic} auto-select & 8 & $-$0.001263 & $-$2.746 & 0.0060$^{***}$ \\
+    \citet{andrews1991heteroskedasticity} plug-in & 1 & $-$0.001263 & $-$2.929 & 0.0034$^{***}$ \\
+    \bottomrule
+    \end{tabular}
+
+    \vspace{0.2cm}
+    \footnotesize
+    \textit{Note:} Sensitivity of the headline ChiNext PhotoPes$_{t-3}$ regression coefficient and HAC-adjusted $t$-statistic to the Newey-West bandwidth, computed with the same regression design as Table~\ref{tab:PhotoPes_regression_results} ($T=2{,}977$, OLS with 5 lags of PhotoPes / $R$ / $R^2$ plus day-of-week dummies). The coefficient itself is bandwidth-invariant; only the standard error changes. The point estimate and $t$-statistic for the four secondary indices (CSI 300, SHCOMP, SZCOMP, CSI 500) are reported in the supplementary file \texttt{nw\_bandwidth\_sensitivity.csv}: SZCOMP and CSI 500 retain their 10\%-level significance at NW(8) and Andrews(1), and lose marginal significance at NW(15) and beyond. *, **, *** indicate single-test significance at the 10\%, 5\%, and 1\% levels.
+\end{table}
+
 \begin{table}[h!]
     \centering
     \caption{Impact of PhotoPes on Market Returns - Robustness Checks (2014--2026)}
@@ -820,6 +852,37 @@ Under these three different settings, the significant negative coefficient of $\
 \footnotesize
 \textit{Note:} This table reports robustness checks for the impact of PhotoPes on market returns. Panel A uses raw PhotoPes without 1\% winsorization. Panel B uses GARCH(1,1)-standardized residuals as the dependent variable; coefficients are therefore on a different (unitless) scale from Panels A and C and from Tables~\ref{tab:PhotoPes_regression_results}--\ref{tab:sentiment_interaction_results}, and should not be compared directly in magnitude. Panel C removes the top and bottom 0.5\% of SHCOMP returns. The sample size drops from $N=2{,}978$ in Tables~\ref{tab:PhotoPes_regression_results}--\ref{tab:sentiment_interaction_results} to $N=2{,}944$ in Panels A and B because we align all robustness panels to the GARCH(1,1) burn-in window required for Panel B, so that magnitudes across panels are computed on a common date set; Panel C drops an additional 30 trading days when the most extreme market returns are removed. $t$-statistics are reported in parentheses. *, **, *** indicate significance at the 10\%, 5\%, and 1\% levels, respectively. Standard errors are Newey--West HAC with 5 lags.
 \end{table}
+
+\subsection{Structural Stability of the Predictive Coefficient}
+\label{sec:break_test}
+
+A natural concern with a 12-year sample is that the predictive relationship is not constant. Table~\ref{tab:subperiod_beta} reports single-predictor OLS regressions of ChiNext returns on \textit{PhotoPes}$_{t-3}$ alone, estimated separately on four three-year sub-periods plus the full sample. The pattern is informative.
+
+\begin{table}[h!]
+    \centering
+    \caption{ChiNext PhotoPes$_{t-3}$: Single-Predictor OLS by Sub-Period}
+    \label{tab:subperiod_beta}
+    \setlength{\tabcolsep}{8pt}
+    \small
+    \begin{tabular}{lcccc}
+    \toprule
+    Sub-period & $N$ & $\hat\beta$ & NW(5) $t$ & $p$-value \\
+    \midrule
+    2014--2017               & 976  & $-$0.00172 & $-$2.318 & 0.020$^{**}$  \\
+    2018--2020               & 730  & $-$0.00066 & $-$0.806 & 0.420         \\
+    2021--2023               & 727  & $-$0.00060 & $-$0.811 & 0.417         \\
+    2024--2026 (partial)     & 548  & $-$0.00209 & $-$1.883 & 0.060$^{*}$   \\
+    \midrule
+    Full sample 2014--2026   & 2{,}981 & $-$0.00103 & $-$2.949 & 0.003$^{***}$ \\
+    \bottomrule
+    \end{tabular}
+
+    \vspace{0.2cm}
+    \footnotesize
+    \textit{Note:} OLS regressions of ChiNext daily log returns on a constant and standardized \textit{PhotoPes}$_{t-3}$ alone, no other controls. Newey--West HAC standard errors with 5 lags. The coefficient is most negative and most significant in 2014--2017 (which spans the 2015 crash and the early-2016 small-cap drawdown), is essentially zero during 2018--2023 (trade tensions, COVID, the 2022 regulatory tightening), and turns marginally significant again in the partial 2024--2026 window. *, **, *** denote single-test significance at the 10\%, 5\%, and 1\% levels.
+\end{table}
+
+To formalize this pattern we apply two structural-break tests to the rolling-window estimate of $\hat\beta_t$ (single-predictor 252-day window). First, we apply the \citet{bai2003computation} multiple-break detection algorithm via the PELT procedure with an L2 cost; across penalty values $\{1, 5, 10, 25\}$ no stepwise breaks are detected, indicating that the coefficient series does not consist of a small number of distinct regimes. Second, we apply the Brown--Durbin--Evans recursive-LS CUSUM test on the full-sample regression; the test rejects the null of constant $\beta$ at the 5\% level (max $|\text{CUSUM}|=105.2$ vs.\ asymptotic 5\% boundary of $51.8$). Read together, these two results say that the ChiNext predictive coefficient \emph{drifts gradually} over time rather than \emph{switches} between regimes: most negative around 2015--2016, near zero through 2018--2023, and partially recovering at the end of the sample. This finding revises the earlier ``Window 2 sign-flip'' interpretation: the 2022--2024 sub-window is not anomalous; rather, it sits in the middle of a gradual cross-time decline in the coefficient. The full-sample $\hat\beta = -0.00103$ ($t=-2.95$) is therefore the average of a strong early-sample relationship and a weak middle-sample relationship, not a stable conditional mean.
 
 \subsection{External Validation Against Frontier-LLM Consensus}
 A natural concern with the visual-sentiment pipeline is whether the PCNN-pretrained ViT backbone genuinely captures investor-relevant sentiment in Chinese financial-news photos, or whether it merely reproduces idiosyncratic Twitter-domain features absorbed from its pretraining set. We address this with a held-out external validation that requires no additional training. We sample 1{,}253 high-quality Sina Finance images stratified across 2014--2026 and label them independently with a three-model frontier multimodal-LLM ensemble (\textit{GPT-4o-mini}, \textit{Claude Sonnet 4.6}, \textit{Gemini 3 Pro Preview}). Restricting to images with majority-vote consensus and a clear sentiment direction (mean LLM score $\le 0.40$ for positive or $\ge 0.60$ for negative, with at least two of three models agreeing) leaves 309 images: 208 positive and 101 negative. Crucially, the PCNN-trained ViT has \textit{never seen} these Sina images, so this is a genuine out-of-distribution validation rather than a cross-validation exercise.
