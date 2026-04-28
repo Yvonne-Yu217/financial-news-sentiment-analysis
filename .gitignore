@@ -142,6 +142,14 @@ results/merged_market_sentiment_data_v2.csv
 results/cumulative_returns_v2.csv
 results/regression_output_v2/
 
+# Hyperparameter search / specification-mining scripts (local-only).
+# These are exploratory tools, not part of the paper's analysis.
+# Keeping them out of the repo to avoid look-ahead-bias accusations.
+optimize_*.py
+alpha_search*.py
+hyperparameter_*.py
+tune_*_grid.py
+
 # Proofreading / review reports (local-only artifacts)
 quality_reports/
 
