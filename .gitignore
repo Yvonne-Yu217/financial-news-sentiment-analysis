@@ -153,6 +153,9 @@ tune_*_grid.py
 # Proofreading / review reports (local-only artifacts)
 quality_reports/
 
+# Confidential professor feedback (do NOT commit)
+feedback_from_prof/
+
 # Chinese-language local-only version of the paper (not for repo)
 paper/main_zh.tex
 paper/main_zh.pdf
