@@ -148,7 +148,7 @@ However, the impact of retail sentiment differs significantly from that of insti
 
 An important innovation in Chinese market sentiment research is the use of data from local internet platforms. \citet{JJGA201601015} combined text mining techniques and the \textit{Baidu Index} to construct an investor sentiment index by analyzing information from CSSCI journals on CNKI and Sina Weibo topics. \citet{JCYJ201804005} used posts from Eastmoney's Guba forums, employing a Naive Bayes method to construct a sentiment indicator that incorporates both bullish/bearish expectations from stock reviews and investor attention. The study found that while overall investor sentiment had no predictive power for the stock market, sentiment from stock reviews during non-trading hours before the market open could predict the opening price, providing new evidence for understanding the behavior of Chinese retail investors. Similarly, \citet{wen2019retail} used the Baidu Search Index as a proxy for retail investor attention, revealing a positive correlation between investor attention and future stock price crash risk, a relationship that is particularly pronounced in firms with high information opacity and low analyst coverage.
 
-The media plays a unique role in the transmission of sentiment in the Chinese market. \citet{JRYJ201509012} constructed a tone indicator for media reports on IPO companies before their listing and found a significant negative correlation between negative media tone and the IPO underpricing rate. This suggests that media reports directly influence investor sentiment, which in turn affects market pricing efficiency. They also revealed that issuing companies and underwriters intentionally use media promotion to guide investor sentiment, demonstrating the special function of the media as a tool for sentiment guidance. Similarly, \citet{GLSJ202101014}, using machine learning-based text analysis, studied the contagion effect of media sentiment. They found that optimistic media sentiment significantly influences the optimistic bias of analyst forecasts and is transmitted to the market through two channels: "limited analyst attention" and "investor sentiment," ultimately affecting stock price volatility and tail risk. These findings collectively confirm the key role of the media in the formation and transmission of sentiment in the Chinese market.
+The media plays a unique role in the transmission of sentiment in the Chinese market. \citet{JRYJ201509012} constructed a tone indicator for media reports on IPO companies before their listing and found a significant negative correlation between negative media tone and the IPO underpricing rate. This suggests that media reports directly influence investor sentiment, which in turn affects market pricing efficiency. They also revealed that issuing companies and underwriters intentionally use media promotion to guide investor sentiment, demonstrating the special function of the media as a tool for sentiment guidance. Similarly, \citet{GLSJ202101014}, using machine learning-based text analysis, studied the contagion effect of media sentiment. They found that optimistic media sentiment significantly influences the optimistic bias of analyst forecasts and is transmitted to the market through two channels: ``limited analyst attention'' and ``investor sentiment,'' ultimately affecting stock price volatility and tail risk. These findings collectively confirm the key role of the media in the formation and transmission of sentiment in the Chinese market.
 
 A complementary strand of work focuses on the institutional features that magnify sentiment effects in China. \citet{liu2019size} construct a Chinese version of the size and value factors and demonstrate that the standard Fama--French three-factor model requires non-trivial modification to fit the A-share market, providing a benchmark against which the CUFE-distributed Fama--French \citeyearpar{fama1993common} three factors used in our portfolio analysis can be compared. \citet{jones2025retail} document that the order-flow imbalance of retail investors carries strong predictive content for future cross-sectional returns in China, providing direct micro-level evidence for the channel through which sentiment-laden news can move prices. \citet{han2022chinese} examine 62 cross-sectional anomalies and find that anomalies are concentrated in stocks with binding short-sale constraints and during high-sentiment periods, consistent with the \citet{stambaugh2012short} mechanism in a Chinese setting.
 
@@ -165,13 +165,13 @@ Despite significant progress in research on Chinese market sentiment, the method
 
 Existing research on sentiment has achieved fruitful results, theoretically clarifying the mechanisms through which sentiment affects the market, methodologically developing a diverse set of tools for sentiment quantification, and empirically verifying the systematic impact of sentiment factors on asset prices. However, this literature review also reveals some clear research gaps and methodological limitations.
 
-Sentiment quantification methods remain predominantly unimodal, with text analysis being the dominant approach, while research on visual information is relatively insufficient. The study by \citet{obaid2022picture} began to fill this gap, but it was based solely on U.S. market data, and the sentiment quantification techniques used, Google Inception (v3) and Stanford's CoreNLP, now have more advanced alternatives. The mechanism of visual sentiment in different market environments still requires in-depth investigation.
+Sentiment quantification methods remain predominantly unimodal, with text analysis being the dominant approach, while research on visual information is relatively insufficient. The study by \citet{obaid2022picture} began to fill this gap, but it was based solely on U.S.\ market data, and the sentiment quantification techniques used, Google Inception (v3) and Stanford's CoreNLP, now have more advanced alternatives. The mechanism of visual sentiment in different market environments still requires in-depth investigation.
 
 Although research on sentiment in the Chinese market has made progress, the methods have largely borrowed from international experience, lacking innovative approaches that consider the unique characteristics of the Chinese market and its investors. In particular, the analysis of visual investor sentiment in the Chinese market is almost non-existent. Given the characteristics of Chinese investors and the media environment, this research direction holds significant theoretical and practical importance.
 
 In response to the aforementioned research gaps and limitations, this paper proposes a multimodal sentiment analysis framework based on deep learning and applies it to the study of the Chinese stock market. The main theoretical contributions and innovations of this paper are as follows:
 
-First, this paper will enrich the research on visual sentiment in the Chinese stock market. By crawling the homepage of Sina News and analyzing the sentiment of news images, it will explore their role in predicting the Chinese stock market. Considering the unique investor structure and media environment in China, this research will provide an important cross-cultural comparative perspective, enriching the application of sentiment theory in different market contexts.
+First, this paper will enrich the research on visual sentiment in the Chinese stock market. By crawling the homepage of Sina Finance and analyzing the sentiment of news images, it will explore their role in predicting the Chinese stock market. Considering the unique investor structure and media environment in China, this research will provide an important cross-cultural comparative perspective, enriching the application of sentiment theory in different market contexts.
 
 Second, this paper employs the latest deep learning technologies for sentiment analysis, using the BERT model for text processing and the Vision Transformer architecture for image analysis. This will significantly enhance the accuracy and comprehensiveness of sentiment quantification and provide a basis for methodological comparative studies.
 
@@ -241,7 +241,7 @@ In the appendix, Figure \ref{fig:extreme_sentiment} displays the top 10 photos f
 % SUBSECTION: Image Sample
 %--------------------------------------------------------------------------
 \subsection{Image Sample}
-The data for this study comes from the Sina News website, covering various news categories from 2014 to 2026. This paper primarily focuses on finance-related news, including domestic and international financial markets, the stock market, and finance-related reports in sectors such as lifestyle, technology, real estate, and automobiles. Headline news and general domestic news were also collected to obtain more comprehensive market sentiment information. The news content was collected in two sessions, morning and afternoon, each day to ensure the timeliness and continuity of the data. Through this diversified news source collection strategy, this paper aims to comprehensively capture changes in market sentiment, especially the fluctuations in investor sentiment related to financial markets. The total number of trading days is 2,982, with a total of approximately 245,000 articles and 572,000 photographs collected, averaging approximately 82 articles and 192 photographs per trading day.
+The data for this study comes from the Sina Finance website, covering various news categories from 2014 to 2026. This paper primarily focuses on finance-related news, including domestic and international financial markets, the stock market, and finance-related reports in sectors such as lifestyle, technology, real estate, and automobiles. Headline news and general domestic news were also collected to obtain more comprehensive market sentiment information. The news content was collected in two sessions, morning and afternoon, each day to ensure the timeliness and continuity of the data. Through this diversified news source collection strategy, this paper aims to comprehensively capture changes in market sentiment, especially the fluctuations in investor sentiment related to financial markets. The total number of trading days is 2{,}982, with a total of approximately 245{,}000 articles and 572{,}000 photographs collected, averaging approximately 82 articles and 192 photographs per trading day.
 
 %--------------------------------------------------------------------------
 % SUBSECTION: Variable Construction
@@ -270,7 +270,7 @@ where $\text{TextNeg}_{it}$ is the pessimistic sentiment score for each article 
 % SUBSECTION: Descriptive Statistics
 %--------------------------------------------------------------------------
 \subsection{Descriptive Statistics}
-Table \ref{tab:descriptive_statistics} presents descriptive statistics for the news sentiment pessimism indicators and major Chinese stock indices for the sample period of 2014--2026, which covers 2,982 trading days. Panel A shows that the mean value of PhotoPes is 0.1900, indicating that approximately 19.0\% of news images are predicted to have negative sentiment; the mean value of TextPes is 0.1430, indicating that about 14.3\% of news text content is identified as having negative sentiment. In Panel B, the average daily returns of all major Chinese stock market indices are close to zero, which is consistent with the general characteristics of financial markets. From the standard deviation, it can be seen that the ChiNext Composite index has the highest volatility (0.0194), while the SSE Composite Index has the lowest (0.0126), reflecting the different risk characteristics of various market sectors. News data was available to construct the sentiment indicators for all trading days in the sample, with approximately 245,000 articles collected in total.
+Table \ref{tab:descriptive_statistics} presents descriptive statistics for the news sentiment pessimism indicators and major Chinese stock indices for the sample period of 2014--2026, which covers 2{,}982 trading days. Panel A shows that the mean value of PhotoPes is 0.1900, indicating that approximately 19.0\% of news images are predicted to have negative sentiment; the mean value of TextPes is 0.1430, indicating that about 14.3\% of news text content is identified as having negative sentiment. In Panel B, the average daily returns of all major Chinese stock market indices are close to zero, which is consistent with the general characteristics of financial markets. From the standard deviation, it can be seen that the ChiNext Composite index has the highest volatility (0.0194), while the SSE Composite Index has the lowest (0.0126), reflecting the different risk characteristics of various market sectors. News data was available to construct the sentiment indicators for all trading days in the sample, with approximately 245{,}000 articles collected in total.
 
 \begin{table}[h!]
     \caption{Descriptive Statistics}
@@ -550,20 +550,20 @@ This state-dependent pattern is consistent with the behavioral finance literatur
     \midrule
     \multicolumn{6}{l}{\textit{Panel B: Low Volatility Periods ($\sigma_t \leq$ 75th percentile, N=2{,}237)}} \\
     \midrule
-    PhotoPes$_{t-1}$ & $-$0.0000 & 0.0002 & 0.0001 & $-$0.0003 & 0.0002 \\
+    PhotoPes$_{t-1}$ & 0.0000 & 0.0002 & 0.0001 & $-$0.0003 & 0.0002 \\
      & ($-$0.07) & (0.87) & (0.32) & ($-$0.76) & (0.66) \\
     PhotoPes$_{t-2}$ & 0.0002 & 0.0002 & 0.0004 & 0.0004 & 0.0003 \\
      & (0.79) & (0.74) & (1.20) & (1.10) & (1.14) \\
-    PhotoPes$_{t-3}$ & $-$0.0001 & $-$0.0000 & $-$0.0001 & $-$0.0005 & $-$0.0001 \\
+    PhotoPes$_{t-3}$ & $-$0.0001 & 0.0000 & $-$0.0001 & $-$0.0005 & $-$0.0001 \\
      & ($-$0.52) & ($-$0.17) & ($-$0.46) & ($-$1.25) & ($-$0.24) \\
     PhotoPes$_{t-4}$ & $-$0.0001 & $-$0.0001 & $-$0.0003 & $-$0.0003 & $-$0.0003 \\
      & ($-$0.42) & ($-$0.66) & ($-$1.08) & ($-$0.95) & ($-$0.97) \\
-    PhotoPes$_{t-5}$ & 0.0001 & $-$0.0001 & $-$0.0000 & 0.0003 & 0.0000 \\
+    PhotoPes$_{t-5}$ & 0.0001 & $-$0.0001 & 0.0000 & 0.0003 & 0.0000 \\
      & (0.32) & ($-$0.29) & ($-$0.13) & (0.77) & (0.01) \\
     \midrule
     TextPes$_{t-1}$ & $-$0.0001 & $-$0.0001 & $-$0.0002 & 0.0001 & $-$0.0002 \\
      & ($-$0.36) & ($-$0.71) & ($-$0.82) & (0.40) & ($-$0.81) \\
-    TextPes$_{t-2}$ & 0.0000 & $-$0.0000 & $-$0.0002 & $-$0.0003 & $-$0.0002 \\
+    TextPes$_{t-2}$ & 0.0000 & 0.0000 & $-$0.0002 & $-$0.0003 & $-$0.0002 \\
      & (0.07) & ($-$0.21) & ($-$0.61) & ($-$0.96) & ($-$0.83) \\
     TextPes$_{t-3}$ & 0.0003 & 0.0002 & 0.0001 & 0.0002 & 0.0002 \\
      & (1.46) & (1.22) & (0.40) & (0.42) & (0.62) \\
@@ -651,7 +651,7 @@ To further validate the effectiveness of the strategy, this paper conducted a Fa
 
     \vspace{0.2cm}
     \footnotesize
-    \textit{Note:} $^{***}$, $^{**}$, and $^{*}$ indicate significance at the 1\%, 5\%, and 10\% levels, respectively. Fama--French three factors (MKT, SMB, HML) and the daily risk-free rate are obtained from the CUFE-distributed Chinese factor file (School of Finance, Central University of Finance and Economics; underlying market data from CSMAR), constructed following the methodology of \citet{fama1993common}. The regression uses daily excess returns (strategy return minus risk-free rate) over the period 2014-01-06 to 2026-02-06 with Newey-West HAC standard errors (5 lags).
+    \textit{Note:} $^{***}$, $^{**}$, and $^{*}$ indicate significance at the 1\%, 5\%, and 10\% levels, respectively. Fama--French three factors (MKT, SMB, HML) and the daily risk-free rate are obtained from the CUFE-distributed Chinese factor file (School of Finance, Central University of Finance and Economics; underlying market data from CSMAR), constructed following the methodology of \citet{fama1993common}. The regression uses daily excess returns (strategy return minus risk-free rate) over the period 2014-01-06 to 2026-02-06 with Newey--West HAC standard errors (5 lags).
 \end{table}
 
 %--------------------------------------------------------------------------
@@ -670,7 +670,7 @@ where $R_t$ is the actual return, $\hat{R}_t$ is the model's predicted return, $
 
 The OOS results in Table \ref{tab:oos_results} confirm the in-sample finding that visual sentiment carries genuine predictive content for Chinese small-cap returns. The ChiNext Composite attains $R^2_{OOS} = 0.267\%$, statistically significant at the $5\%$ level based on the one-sided MSPE-adjusted test ($t = 2.12$, $p = 0.017$). The SHCOMP ($R^2_{OOS} = 0.008\%$, $p=0.095$), SZSE Composite ($R^2_{OOS} = 0.013\%$, $p=0.072$), and CSI 500 (negative point estimate but $t=1.44$, $p=0.075$) are marginally significant at the $10\%$ level on the one-sided MSPE-adjusted test, while the CSI 300 has a negative point estimate and is not significant. The qualitative pattern---strongest predictability for the growth-oriented, retail-driven ChiNext, weaker for large-cap indices---mirrors the in-sample regression results in Table~\ref{tab:PhotoPes_regression_results} and is consistent with sentiment effects being most pronounced for stocks that are harder to value and more difficult to arbitrage \citep{baker2007investor,stambaugh2012short}.
 
-The headline ChiNext $R^2_{OOS}$ of 0.267\% is in the same order of magnitude as the daily-frequency benchmarks reported by \citet{rapach2010out} for the U.S. equity premium, and \citet{campbell2008predicting} demonstrate that even modest positive values at the daily frequency can translate into meaningful economic gains for a mean-variance investor. The rule-based sentiment strategy described in the portfolio construction subsection operates on pre-identified signal thresholds rather than estimated regression coefficients, and its performance should be interpreted independently from the OOS regression results.
+The headline ChiNext $R^2_{OOS}$ of 0.267\% is in the same order of magnitude as the daily-frequency benchmarks reported by \citet{rapach2010out} for the U.S.\ equity premium, and \citet{campbell2008predicting} demonstrate that even modest positive values at the daily frequency can translate into meaningful economic gains for a mean-variance investor. The rule-based sentiment strategy described in the portfolio construction subsection operates on pre-identified signal thresholds rather than estimated regression coefficients, and its performance should be interpreted independently from the OOS regression results.
 
 \paragraph{Robustness to regularization.} To document that the headline ChiNext OOS result is robust to the choice of estimator (rather than dependent on the OLS specification), we re-run the OOS exercise using Ridge regression at a grid of regularization parameters $\alpha \in \{1, 10, 100, 500, 1{,}000, 10{,}000, 100{,}000\}$, holding the predictor set and the OOS window fixed. The resulting Clark--West $t$-statistic on the ChiNext lies in $[1.72, 2.12]$ across the full grid, and the one-sided $p$-value lies in $[0.017, 0.043]$, so significance at the 5\% level holds throughout. The $R^2_{OOS}$ magnitude declines monotonically from $0.267\%$ at $\alpha=1$ (OLS, our primary spec) to $0.015\%$ at the cross-validation-locked $\alpha=100{,}000$, reflecting the heavy-shrinkage character of the latter. The CV-locked value is reported as a conservative robustness benchmark; the OLS estimate is the headline value because OLS is the natural estimator at this dimension ratio (3 predictors, $\sim$1{,}500 training observations). The fact that the same qualitative conclusion holds across the full regularization spectrum---ChiNext significant at 5\% for any $\alpha$ in the grid---is itself the relevant robustness statement.
 
@@ -808,13 +808,13 @@ Considering that winsorization might affect the information content of the senti
 
 To exclude the potential bias caused by extreme market returns, this paper removes the most extreme returns from the sample (0.5\% from each tail of SHCOMP). As shown in Panel C of Table \ref{tab:robustness}, the predictive power of $\text{PhotoPes}_{t-3}$ remains robust for the ChiNext index at the 5\% level. This confirms that the indicator's core predictive ability is not solely driven by extreme market events.
 
-Under these three different settings, the significant negative coefficient of $\text{PhotoPes}_{t-3}$ remains consistent for the ChiNext index, which represents growth-oriented and small-to-mid-cap stocks. This series of checks confirms that the negative predictive power of the photo sentiment indicator is a robust phenomenon, particularly pronounced in markets where investor sentiment plays a more prominent role in asset pricing.
+Across all three settings, the significant negative coefficient of $\text{PhotoPes}_{t-3}$ on the ChiNext index, which represents growth-oriented and small-to-mid-cap stocks, holds. This battery of checks confirms that the negative predictive power of the photo sentiment indicator is a robust phenomenon, particularly pronounced in markets where investor sentiment plays a more prominent role in asset pricing.
 
 We also examine sensitivity to the Newey--West HAC bandwidth, which is set to 5 lags throughout the main tables to match the right-hand-side lag depth. Because the choice of bandwidth equal to the regression lag depth could in principle understate residual autocorrelation, Table~\ref{tab:nw_bandwidth} re-runs the headline ChiNext PhotoPes$_{t-3}$ regression at a grid of bandwidths $\{5, 10, 15, 22\}$ together with the data-driven \citet{newey1994automatic} and \citet{andrews1991heteroskedasticity} plug-in selectors. The point estimate is unchanged across columns; the $t$-statistic varies smoothly from $-2.93$ at the Andrews(1991) plug-in (1 lag) to $-2.45$ at one trading month (22 lags), and the headline ChiNext result remains significant at the 1\% level for bandwidths up to 15 lags and at the 5\% level at 22 lags. The data-driven \citet{newey1994automatic} bandwidth of 8 lags yields $|t|=2.75$ at the 1\% level, very close to the bandwidth-5 value reported in Table~\ref{tab:PhotoPes_regression_results}.
 
 \begin{table}[h!]
     \centering
-    \caption{ChiNext PhotoPes$_{t-3}$ -- Newey-West Bandwidth Sensitivity (2014--2026)}
+    \caption{ChiNext PhotoPes$_{t-3}$ -- Newey--West Bandwidth Sensitivity (2014--2026)}
     \label{tab:nw_bandwidth}
     \setlength{\tabcolsep}{6pt}
     \small
@@ -833,7 +833,7 @@ We also examine sensitivity to the Newey--West HAC bandwidth, which is set to 5 
 
     \vspace{0.2cm}
     \footnotesize
-    \textit{Note:} Sensitivity of the headline ChiNext PhotoPes$_{t-3}$ regression coefficient and HAC-adjusted $t$-statistic to the Newey-West bandwidth, computed with the same regression design as Table~\ref{tab:PhotoPes_regression_results} ($T=2{,}977$, OLS with 5 lags of PhotoPes / $R$ / $R^2$ plus day-of-week dummies). The coefficient itself is bandwidth-invariant; only the standard error changes. The point estimate and $t$-statistic for the four secondary indices (CSI 300, SHCOMP, SZCOMP, CSI 500) are reported in the supplementary file \texttt{nw\_bandwidth\_sensitivity.csv}: SZCOMP and CSI 500 retain their 10\%-level significance at NW(8) and Andrews(1), and lose marginal significance at NW(15) and beyond. *, **, *** indicate single-test significance at the 10\%, 5\%, and 1\% levels.
+    \textit{Note:} Sensitivity of the headline ChiNext PhotoPes$_{t-3}$ regression coefficient and HAC-adjusted $t$-statistic to the Newey--West bandwidth, computed with the same regression design as Table~\ref{tab:PhotoPes_regression_results} ($N=2{,}978$, OLS with 5 lags of PhotoPes / $R$ / $R^2$ plus day-of-week dummies). The coefficient itself is bandwidth-invariant; only the standard error changes. The point estimate and $t$-statistic for the four secondary indices (CSI 300, SHCOMP, SZCOMP, CSI 500) are reported in the supplementary file \texttt{nw\_bandwidth\_sensitivity.csv}: SZCOMP and CSI 500 retain their 10\%-level significance at NW(8) and Andrews(1), and lose marginal significance at NW(15) and beyond. *, **, *** indicate single-test significance at the 10\%, 5\%, and 1\% levels.
 \end{table}
 
 \begin{table}[h!]
@@ -841,7 +841,7 @@ We also examine sensitivity to the Newey--West HAC bandwidth, which is set to 5 
     \caption{Impact of PhotoPes on Market Returns - Robustness Checks (2014--2026)}
     \label{tab:robustness}
     \setlength{\tabcolsep}{4pt} % smaller column spacing
-    \small % slightly smaller font
+    \footnotesize
     \begin{tabular}{lccccc}
     \toprule
     Indicators & \textit{CSI 300} & \textit{SHCOMP} & \textit{SZCOMP} & \textit{ChiNext} & \textit{CSI 500} \\
@@ -957,17 +957,21 @@ The size of the relevant family depends on how strongly one accepts the lag-3 sp
     \centering
     \caption{Bonferroni-Corrected Family-Wise Thresholds for the ChiNext $\textit{PhotoPes}_{t-3}$ Result}
     \label{tab:multiple_testing}
-    \setlength{\tabcolsep}{6pt}
-    \small
-    \begin{tabular}{lccc}
+    \setlength{\tabcolsep}{4pt}
+    \footnotesize
+    \begin{tabular}{p{0.50\textwidth}ccc}
     \toprule
-    Family definition & $m$ & 5\% family-wise threshold ($p$) & ChiNext (raw $p\approx 0.005$) survives? \\
+    Family definition & $m$ & Threshold ($p$) & Survives? \\
     \midrule
     Five indices at the pre-specified $t-3$ lag, single indicator & 5  & 0.010 & yes  \\
     Five indices $\times$ five lags, single indicator              & 25 & 0.002 & \textbf{no} \\
     Five indices $\times$ five lags $\times$ two indicators        & 50 & 0.001 & \textbf{no} \\
     \bottomrule
     \end{tabular}
+
+    \vspace{0.15cm}
+    \footnotesize
+    \textit{Note:} 5\% family-wise Bonferroni-adjusted thresholds. The headline ChiNext result has raw $p \approx 0.005$.
 \end{table}
 
 The Bonferroni family-size choice is itself an unsettled methodological question \citep{harvey2016cross}, and we present arguments for both the $m=5$ and $m=25$ readings rather than mechanically defaulting to the most conservative. The $t-3$ lag in our headline test is not a data-driven choice; it is borrowed forward from \citet{obaid2022picture}, who report the strongest reversal effect at a similar three-period horizon on weekly U.S.\ Wall Street Journal photographs. Under the standard ``research design borrowed from prior literature'' interpretation, the relevant family is the five indices at the single pre-specified lag, $m=5$ (per-test threshold $p<0.010$ at 5\% family-wise); the headline ChiNext result clears this threshold. Under the more conservative ``all five lags treated equally'' interpretation, the relevant family is $5 \times 5 = 25$ (per-test threshold $p<0.002$); the headline ChiNext result does not clear this threshold at the 5\% family-wise level, and we report this transparently rather than relying on the more permissive $m=5$ reading alone. Under the most conservative interpretation that additionally accommodates the parallel $\textit{TextPes}$ family ($m=50$, threshold $p<0.001$), no lag--index--indicator combination survives at the 5\% family-wise level, including the ChiNext.
