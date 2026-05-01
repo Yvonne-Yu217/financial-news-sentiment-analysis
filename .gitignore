@@ -122,6 +122,16 @@ hpc_bundle/
 # Numpy training metric snapshots
 *.npy
 
+# Archived v3 CSI-family local-only data and results (preserved for potential
+# future stock-level extension; not part of the published artifact). Re-pullable
+# via archive/v3_csi_family_alternative/scripts/build_merged_v3.py if deleted.
+archive/v3_csi_family_alternative/data/
+archive/v3_csi_family_alternative/results/
+
+# Fama-French 3/4/5 factor daily file (downloaded separately per README;
+# 100MB+ Excel-derived CSV not appropriate for git tracking)
+three_four_five_factor_daily/
+
 # v2 transfer-learning pipeline (LLM-supervised ViT) — local-only experiment.
 # These scripts implement an alternative ViT trained on LLM-consensus labels;
 # see §4.2 of the paper for the held-out validation that the PCNN-trained
