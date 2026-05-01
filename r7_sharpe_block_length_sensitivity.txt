@@ -1,0 +1,9 @@
+Round-7 block-length sensitivity (Politis-Romano stationary bootstrap)
+==============================================================================
+Sample n=2981; observed Delta_SR=0.1178
+Politis-Romano T^(1/3) -> b=14
+
+ block_length_days  n_bootstrap  delta_sr_observed  boot_mean  boot_std    ci_2p5  ci_97p5  one_sided_p
+                 5        10000           0.117819   0.105489  0.434995 -0.754506 0.965345       0.3893
+                14        10000           0.117819   0.103854  0.431615 -0.727252 0.959406       0.4001
+                22        10000           0.117819   0.100874  0.431758 -0.731879 0.946377       0.3955

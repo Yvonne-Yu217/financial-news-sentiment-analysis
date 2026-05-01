@@ -1,0 +1,22 @@
+Round-7 trailing-momentum control table
+==============================================================================
+Dependent: ChiNext_log_returns_t
+Newey-West HAC standard errors with 5 lags
+Trailing window anchored at t-3 (sum of r_{t-3-w+1}..r_{t-3})
+
+R1 MC5a sanity check: corr(PhotoPes_t-3, R_t-3) = +0.0088
+
+          spec    N  beta_photopes_lag3  t_photopes_lag3  p_photopes_lag3                                             trail_cols beta_trail_last t_trail_last                                                                                                                                                                                                                                     trail_detail   adj_r2
+  (1) Headline 2978           -0.001253        -2.816752         0.004851                                                                                                                                                                                                                                                                                                                                      0.008694
+ (2) +trail 5d 2975           -0.001267        -2.848393         0.004394                                           trail_cum_5d       -0.002191    -0.130533                                                                                                                                                                                     [('trail_cum_5d', np.float64(-0.00219), np.float64(-0.131))] 0.008333
+(3) +trail 10d 2970           -0.001269        -2.848530         0.004392                                          trail_cum_10d        0.006833     0.810769                                                                                                                                                                                      [('trail_cum_10d', np.float64(0.00683), np.float64(0.811))] 0.008605
+(4) +trail 20d 2960           -0.001251        -2.804153         0.005045                                          trail_cum_20d        0.008707     1.669778                                                                                                                                                                                       [('trail_cum_20d', np.float64(0.00871), np.float64(1.67))] 0.009838
+(5) +trail 60d 2920           -0.001233        -2.697753         0.006981                                          trail_cum_60d       -0.000271    -0.086539                                                                                                                                                                                    [('trail_cum_60d', np.float64(-0.00027), np.float64(-0.087))] 0.007945
+(6) +ALL trail 2920           -0.001229        -2.691836         0.007106 trail_cum_5d+trail_cum_10d+trail_cum_20d+trail_cum_60d       -0.004067    -1.124437 [('trail_cum_5d', np.float64(-0.0146), np.float64(-0.672)), ('trail_cum_10d', np.float64(-0.00121), np.float64(-0.085)), ('trail_cum_20d', np.float64(0.01534), np.float64(1.901)), ('trail_cum_60d', np.float64(-0.00407), np.float64(-1.124))] 0.009707
+
+Trailing-coefficient detail:
+(2) +trail 5d: [('trail_cum_5d', np.float64(-0.00219), np.float64(-0.131))]
+(3) +trail 10d: [('trail_cum_10d', np.float64(0.00683), np.float64(0.811))]
+(4) +trail 20d: [('trail_cum_20d', np.float64(0.00871), np.float64(1.67))]
+(5) +trail 60d: [('trail_cum_60d', np.float64(-0.00027), np.float64(-0.087))]
+(6) +ALL trail: [('trail_cum_5d', np.float64(-0.0146), np.float64(-0.672)), ('trail_cum_10d', np.float64(-0.00121), np.float64(-0.085)), ('trail_cum_20d', np.float64(0.01534), np.float64(1.901)), ('trail_cum_60d', np.float64(-0.00407), np.float64(-1.124))]
