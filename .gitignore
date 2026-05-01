@@ -113,7 +113,14 @@ ai_image_annotation/run_artifacts/
 /training_dataset_tuned/
 /backups/
 overleaf_upload*.zip
+overleaf_upload_*/
 *_executed.ipynb
+
+# HPC bundle (transient packaging artifact)
+hpc_bundle/
+
+# Numpy training metric snapshots
+*.npy
 
 # v2 transfer-learning pipeline (LLM-supervised ViT) — local-only experiment.
 # These scripts implement an alternative ViT trained on LLM-consensus labels;
