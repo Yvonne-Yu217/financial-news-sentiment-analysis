@@ -38,10 +38,10 @@ rcParams.update({
     'axes.facecolor':   'white',
 })
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-IMG_OUT      = SCRIPT_DIR / "paper" / "figures"
-DATA_OLD     = SCRIPT_DIR / "results" / "merged_market_sentiment_data_old.csv"
-METRICS_JSON = SCRIPT_DIR / "run_artifacts" / "8vit_transferlearning" / "8vit_training_metrics.json"
+REPO_ROOT    = Path(__file__).resolve().parents[2]
+IMG_OUT      = REPO_ROOT / "paper" / "figures"
+DATA_OLD     = REPO_ROOT / "results" / "merged_market_sentiment_data_old.csv"
+METRICS_JSON = REPO_ROOT / "run_artifacts" / "8vit_transferlearning" / "8vit_training_metrics.json"
 
 # ═══════════════════════════════════════════════════
 # Figure 1: Training & Validation Accuracy (B&W)

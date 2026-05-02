@@ -23,10 +23,10 @@ import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
 
-SCRIPT_DIR = Path(__file__).parent.resolve()
-ANNOT_CSV = SCRIPT_DIR / "ai_image_annotation/run_artifacts/ai_image_annotations_run_20260409_clean.csv"
-MODEL_PATH = SCRIPT_DIR / "improved_vit_sentiment_model_old.pth"
-OUT_DIR = SCRIPT_DIR / "results/regression_output_oldmodel"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+ANNOT_CSV = REPO_ROOT / "ai_image_annotation/run_artifacts/ai_image_annotations_run_20260409_clean.csv"
+MODEL_PATH = REPO_ROOT / "improved_vit_sentiment_model_old.pth"
+OUT_DIR = REPO_ROOT / "results/regression_output_oldmodel"
 
 DEVICE = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 

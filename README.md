@@ -34,35 +34,40 @@ Two daily market-level sentiment indices are constructed from Sina Finance news 
 │
 ├── 1–14*.py                        # Data pipeline (sequential)
 │
-├── regression_tables_oldmodel.py   # Tables 1–4: headline regressions
-├── paper_table5_conditional.py     # Table 5: vol-conditional sentiment
-├── paper_table6_portfolio.py       # Table 6: portfolio sorts
-├── paper_table7_ff3.py             # Table 7: Fama-French-3 alphas
-├── paper_table8_oos.py             # Table 8: out-of-sample R²
-├── paper_table8b_oos_extensions_old.py  # Table 8b: regime-conditional OOS
-├── paper_table9_robustness.py      # Table 9: robustness battery
-├── paper_table10_strategy_robustness_old.py  # Table 10: strategy robustness
-├── paper_table11_vit_quality_robustness.py   # Table 11: ViT quality slices
-│
-├── Mechanism / cross-sectional analysis
-│   ├── g1_high_vol_joint.py        # G1: high-vol joint regression across 5 indices
-│   ├── g2_retail_density_ranking.py  # G2: retail-density ordering proxies
-│   └── g3_amihud_control.py        # G3: Amihud illiquidity control
-│
 ├── analysis/
+│   ├── tables/                     # All paper-table generators
+│   │   ├── regression_tables_oldmodel.py   # Tables 1–4: headline regressions
+│   │   ├── paper_table5_conditional.py     # Table 5: vol-conditional sentiment
+│   │   ├── paper_table6_portfolio.py       # Table 6: portfolio sorts
+│   │   ├── paper_table7_ff3.py             # Table 7: Fama-French-3 alphas
+│   │   ├── paper_table8_oos.py             # Table 8: out-of-sample R²
+│   │   ├── paper_table8b_oos_extensions_old.py  # Table 8b: regime-cond OOS
+│   │   ├── paper_table9_robustness.py      # Table 9: robustness battery
+│   │   ├── paper_table10_strategy_robustness_old.py  # Table 10: strategy
+│   │   └── paper_table11_vit_quality_robustness.py   # Table 11: ViT quality
+│   │
+│   ├── figures/                    # All paper-figure generators
+│   │   ├── regenerate_figures_bw.py        # All paper figures (B&W, 300 DPI)
+│   │   └── 14plot_extreme_sentiment_images.py  # Appendix figure (MongoDB)
+│   │
 │   └── robustness/                 # Round 7 robustness scripts + outputs
 │       ├── r7_block_length_sensitivity.py    # Politis-Romano b ∈ {5, 14, 22}
 │       ├── r7_block_length_sensitivity.csv   # bootstrap CIs at each b
 │       ├── r7_trailing_momentum_control.py   # 5/10/20/60-day controls
 │       └── r7_trailing_momentum_control.csv  # 6 specs × β/t/p
 │
-├── nw_bandwidth_sensitivity.py     # NW lags ∈ {5, 10, 15, 22}
-├── break_test_oos_coefficient.py   # Bai-Perron + Brown-Durbin-Evans
+├── Mechanism / cross-sectional analysis (kept at root)
+│   ├── g1_high_vol_joint.py        # G1: high-vol joint regression across 5 indices
+│   ├── g2_retail_density_ranking.py  # G2: retail-density ordering proxies
+│   └── g3_amihud_control.py        # G3: Amihud illiquidity control
 │
-├── Backtesting
+├── Methodology robustness (kept at root)
+│   ├── nw_bandwidth_sensitivity.py     # NW lags ∈ {5, 10, 15, 22}
+│   └── break_test_oos_coefficient.py   # Bai-Perron + Brown-Durbin-Evans
+│
+├── Backtesting (kept at root)
 │   ├── sharpe_bootstrap_costs.py   # Strategy bootstrap CI + transaction costs
-│   ├── tune_ridge_alpha_cv.py      # Pre-OOS Ridge CV (locked α)
-│   └── regenerate_figures_bw.py    # All paper figures (B&W, 300 DPI)
+│   └── tune_ridge_alpha_cv.py      # Pre-OOS Ridge CV (locked α)
 │
 ├── ai_image_annotation/            # LLM consensus validation pipeline
 │
@@ -99,21 +104,27 @@ pip install -r requirements.txt
 
 ### Step 3 — Run paper-table scripts (each writes CSV/JSON/figures into `results/`)
 
+> **Run from repo root.** All paths in scripts resolve relative to the
+> repository root, so always invoke as `python analysis/tables/...` not `cd analysis/tables && python ...`.
+
 ```bash
 # Headline regressions
-python regression_tables_oldmodel.py        # Tables 1–4
+python analysis/tables/regression_tables_oldmodel.py        # Tables 1–4
 
 # Conditional / portfolio / factor / OOS
-python paper_table5_conditional.py
-python paper_table6_portfolio.py
-python paper_table7_ff3.py
-python paper_table8_oos.py                  # ~5 min
-python paper_table8b_oos_extensions_old.py
-python paper_table9_robustness.py
-python paper_table10_strategy_robustness_old.py
-python paper_table11_vit_quality_robustness.py
+python analysis/tables/paper_table5_conditional.py
+python analysis/tables/paper_table6_portfolio.py
+python analysis/tables/paper_table7_ff3.py
+python analysis/tables/paper_table8_oos.py                  # ~5 min
+python analysis/tables/paper_table8b_oos_extensions_old.py
+python analysis/tables/paper_table9_robustness.py
+python analysis/tables/paper_table10_strategy_robustness_old.py
+python analysis/tables/paper_table11_vit_quality_robustness.py
 
-# Mechanism (cross-sectional)
+# All paper figures (B&W, 300 DPI)
+python analysis/figures/regenerate_figures_bw.py
+
+# Mechanism (cross-sectional, kept at root)
 python g1_high_vol_joint.py
 python g2_retail_density_ranking.py
 python g3_amihud_control.py
@@ -124,9 +135,8 @@ python break_test_oos_coefficient.py
 python analysis/robustness/r7_block_length_sensitivity.py
 python analysis/robustness/r7_trailing_momentum_control.py
 
-# Strategy + figures
+# Strategy
 python sharpe_bootstrap_costs.py
-python regenerate_figures_bw.py
 ```
 
 ---
