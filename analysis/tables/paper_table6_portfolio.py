@@ -22,7 +22,7 @@ def load():
     df = df[df['Date'] >= '2014-01-01'].copy()
     fac = pd.read_csv(FACTOR, parse_dates=['trddy']).rename(columns={'trddy': 'Date'})
     df = df.merge(fac[['Date', 'rf']], on='Date', how='left')
-    df['rf'] = df['rf'].fillna(method='ffill').fillna(0.0)
+    df['rf'] = df['rf'].ffill().fillna(0.0)
     return df
 
 def run_backtest(df):

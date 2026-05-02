@@ -73,7 +73,7 @@ def metrics(rets, rf=None):
     if len(rets) == 0 or rets.std() == 0:
         return dict(ann_ret=0.0, ann_vol=0.0, sharpe=0.0, max_dd=0.0)
     if rf is not None:
-        rf_aligned = rf.reindex(rets.index).fillna(method='ffill').fillna(0.0)
+        rf_aligned = rf.reindex(rets.index).ffill().fillna(0.0)
         excess = rets - rf_aligned
     else:
         excess = rets

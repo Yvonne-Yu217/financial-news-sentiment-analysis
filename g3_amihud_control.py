@@ -11,10 +11,10 @@ Critical question (per professor): does ChiNext PhotoPes_{t-3} remain
 5%-significant after controlling for time-varying liquidity?
 
 Data sources for daily trading amount:
-  CSI 300  (000300): paper_v3_csi_family/data/index_csindex_daily_v3.csv (中证 接口)
-  SHCOMP   (000001): paper_v3_csi_family/data/shcomp_000001_daily_csindex.csv (中证 接口)
+  CSI 300  (000300): archive/v3_csi_family_alternative/data/index_csindex_daily_v3.csv (中证 接口)
+  SHCOMP   (000001): archive/v3_csi_family_alternative/data/shcomp_000001_daily_csindex.csv (中证 接口)
   CSI 500  (000905): same csindex file
-  ChiNext  (399102): paper_v3_csi_family/data/chinext_399102_daily_em.csv (East Money)
+  ChiNext  (399102): archive/v3_csi_family_alternative/data/chinext_399102_daily_em.csv (East Money)
   SZCOMP   (399106): NOT AVAILABLE — East Money rate-limit; use volume×close proxy
 
 Amihud unit (canonical Amihud 2002): million-USD inverse. Here we use
@@ -38,17 +38,17 @@ INDICES = ["CSI300", "SHCOMP", "SZCOMP", "ChiNext", "CSI500"]
 def load_index_amounts():
     """Load daily 成交金额 (in 元) for all 5 indices from various sources."""
     # CSI 300, CSI 500 from 中证 file
-    df_csi = pd.read_csv("paper_v3_csi_family/data/index_csindex_daily_v3.csv")
+    df_csi = pd.read_csv("archive/v3_csi_family_alternative/data/index_csindex_daily_v3.csv")
     df_csi["日期"] = pd.to_datetime(df_csi["日期"])
     df_csi["amount_yuan"] = pd.to_numeric(df_csi["成交金额"], errors="coerce") * 1e8  # 亿 → 元
 
     # SHCOMP via 中证
-    df_sh = pd.read_csv("paper_v3_csi_family/data/shcomp_000001_daily_csindex.csv")
+    df_sh = pd.read_csv("archive/v3_csi_family_alternative/data/shcomp_000001_daily_csindex.csv")
     df_sh["日期"] = pd.to_datetime(df_sh["日期"])
     df_sh["amount_yuan"] = pd.to_numeric(df_sh["成交金额"], errors="coerce") * 1e8
 
     # ChiNext via East Money
-    df_ch = pd.read_csv("paper_v3_csi_family/data/chinext_399102_daily_em.csv")
+    df_ch = pd.read_csv("archive/v3_csi_family_alternative/data/chinext_399102_daily_em.csv")
     df_ch["日期"] = pd.to_datetime(df_ch["date"])
     df_ch["amount_yuan"] = pd.to_numeric(df_ch["amount"], errors="coerce")  # already in 元
 

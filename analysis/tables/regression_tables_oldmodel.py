@@ -25,9 +25,9 @@ from scipy.stats.mstats import winsorize
 warnings.filterwarnings("ignore")
 
 # ─────────────────────────────────────────────────────────────────────────────
-BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE   = os.path.join(BASE_DIR, "results", "merged_market_sentiment_data_old.csv")
-OUTPUT_DIR  = os.path.join(BASE_DIR, "results", "regression_output_oldmodel")
+REPO_ROOT   = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_FILE   = os.path.join(REPO_ROOT, "results", "merged_market_sentiment_data_old.csv")
+OUTPUT_DIR  = os.path.join(REPO_ROOT, "results", "regression_output_oldmodel")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 FIVE_INDICES = ["SHCOMP", "CSI300", "SZCOMP", "ChiNext", "CSI500"]
