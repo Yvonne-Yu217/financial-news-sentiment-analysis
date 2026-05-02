@@ -165,7 +165,8 @@ def main():
         boot_deltas[b] = sb_strat - sb_bench
 
     centered = boot_deltas - boot_deltas.mean()
-    p_one_sided = np.mean(centered + delta_obs <= 0)
+    # Canonical centered-bootstrap one-sided p for H0: delta_SR <= 0 vs H1: > 0
+    p_one_sided = np.mean(centered >= delta_obs)
     ci_lo, ci_hi = np.percentile(boot_deltas, [2.5, 97.5])
 
     print(f"\nBootstrap distribution of Delta_SR:")

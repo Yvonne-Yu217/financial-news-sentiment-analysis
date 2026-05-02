@@ -123,7 +123,8 @@ def main():
     for b in [5, 14, 22]:
         boot = bootstrap_at_block_length(strat, bench, rf, b, B, seed=42)
         centered = boot - boot.mean()
-        p_one_sided = float(np.mean(centered + delta_obs <= 0))
+        # Canonical centered-bootstrap one-sided p for H0: delta_SR <= 0 vs H1: > 0
+        p_one_sided = float(np.mean(centered >= delta_obs))
         ci_lo, ci_hi = np.percentile(boot, [2.5, 97.5])
         rows.append({
             "block_length_days": b,
