@@ -5,7 +5,7 @@ Replication code, data pipeline, and analysis scripts for:
 > **"Seeing Sentiment: News Images, Retail Participation, and Chinese A-Share Index Returns"**
 > Liu, Wang, Yu, Zeng (2026). Authors listed alphabetically.
 
-**Manuscript repo (LaTeX source + PDF):** [seeing-sentiment-manuscript](https://github.com/Yvonne-Yu217/seeing-sentiment-manuscript)
+**Manuscript repo (LaTeX source):** [Initial-Singularity/seeing-sentiment-manuscript](https://github.com/Initial-Singularity/seeing-sentiment-manuscript) (private)
 
 ---
 
