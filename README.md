@@ -6,6 +6,7 @@ Replication code, data pipeline, and analysis scripts for:
 > Liu, Wang, Yu, Zeng (2026). Authors listed alphabetically.
 
 **Manuscript repo (LaTeX source):** [Initial-Singularity/seeing-sentiment-manuscript](https://github.com/Initial-Singularity/seeing-sentiment-manuscript) (private)
+**Paper-to-script map:** [`docs/REPRODUCE.md`](docs/REPRODUCE.md) lists every table and figure in the paper next to the script that produces it.
 
 ---
 
@@ -13,72 +14,87 @@ Replication code, data pipeline, and analysis scripts for:
 
 Two daily market-level sentiment indices are constructed from Sina Finance news (2014–2026):
 
-- **PhotoPes** — image pessimism via a fine-tuned Vision Transformer (ViT-B/16, 84.7% held-out accuracy)
-- **TextPes** — text pessimism via a BERT-Chinese sentiment classifier
+- **PhotoPes** — image pessimism via a fine-tuned Vision Transformer (ViT-B/16, 88.14% held-out accuracy on PCNN)
+- **TextPes** — text pessimism via the Erlangshen-RoBERTa Chinese sentiment classifier
 
-**Headline finding (Table 4):** PhotoPes_{t-3} negatively predicts ChiNext returns at the 1% level (Newey-West HAC, 5 lags), with weaker effects on SZCOMP and CSI 500.
+**Headline finding (§4.1, Table 5):** In high-volatility regimes, `PhotoPes_{t-3}` is negative and significant on the ChiNext at the 5% level (NW(5) HAC), with coefficient magnitude rising monotonically across volatility-threshold cutoffs in {50, 60, 70, 75, 80, 90} percentiles.
 
-**Robustness:** the result survives trailing-momentum controls (5/10/20/60-day cumulative-return regressors anchored at t-3), Politis-Romano stationary block-bootstrap at b ∈ {5, 14, 22}, Andrews(1991) plug-in NW bandwidth selection, Bai-Perron break tests, and Bonferroni correction at m = 25.
+**Cross-section mechanism (§4.1):** The ranking of `PhotoPes` coefficients across five indices aligns with three independent retail-density proxies (turnover, inverse free-float, retail-account share); ChiNext is on top and CSI 300 / SHCOMP at the bottom across all three.
 
-**Sub-period decomposition:** in-sample significance concentrates in 2014–2017; the 2018–2023 window is null; 2024–2026 shows partial recovery. The paper presents this as honest sub-period drift rather than a uniform alpha.
+**Bounded tradability (§4.5):** A long/short rule built from the same signal yields a gross Sharpe gap of 0.118 vs the CSI 500 benchmark, but is **not statistically distinguishable from zero** (bootstrap 95% CI [-0.75, +0.97], one-sided p=0.389) and is fully eroded by ~17 bps of round-trip transaction costs.
 
 ---
 
 ## Repository Structure
 
 ```
-├── 1–14*.py                        # Data pipeline (sequential)
+.
+├── pipeline/                         # Data acquisition + sentiment construction
+│   ├── 01_sina_news_category_crawler.py
+│   ├── 02_news_scraper.py
+│   ├── 03_image_downloader.py
+│   ├── 04_image_basic_filter.py
+│   ├── 05_clarity_analysis_helper.py
+│   ├── 06_text_analysis_helper.py
+│   ├── 07_image_quality_processor.py
+│   ├── 08_vit_transferlearning_pcnn.py    # ViT fine-tune on PCNN sentiment dataset
+│   ├── 09_sentiment_analyzer_pcnn.py
+│   ├── 10_calculate_daily_photopes_pcnn.py
+│   ├── 11_calculate_daily_textpes.py
+│   ├── 12_recalculate_quality_scores.py
+│   └── 13_merge_data_and_calculate_returns_pcnn.py  # Writes results/merged_market_sentiment_data_old.csv
 │
 ├── analysis/
-│   ├── tables/                     # All paper-table generators
-│   │   ├── regression_tables_oldmodel.py   # Tables 1–4: headline regressions
-│   │   ├── paper_table5_conditional.py     # Table 5: vol-conditional sentiment
-│   │   ├── paper_table6_portfolio.py       # Table 6: portfolio sorts
-│   │   ├── paper_table7_ff3.py             # Table 7: Fama-French-3 alphas
-│   │   ├── paper_table8_oos.py             # Table 8: out-of-sample R²
-│   │   ├── paper_table8b_oos_extensions_old.py  # Table 8b: regime-cond OOS
-│   │   ├── paper_table9_robustness.py      # Table 9: robustness battery
-│   │   ├── paper_table10_strategy_robustness_old.py  # Table 10: strategy
-│   │   └── paper_table11_vit_quality_robustness.py   # Table 11: ViT quality
-│   │
-│   ├── figures/                    # All paper-figure generators
-│   │   ├── regenerate_figures_bw.py        # All paper figures (B&W, 300 DPI)
-│   │   └── 14plot_extreme_sentiment_images.py  # Appendix figure (MongoDB)
-│   │
-│   └── robustness/                 # Round 7 robustness scripts + outputs
-│       ├── r7_block_length_sensitivity.py    # Politis-Romano b ∈ {5, 14, 22}
-│       ├── r7_block_length_sensitivity.csv   # bootstrap CIs at each b
-│       ├── r7_trailing_momentum_control.py   # 5/10/20/60-day controls
-│       └── r7_trailing_momentum_control.csv  # 6 specs × β/t/p
+│   ├── tables/                       # Paper-table generators (Tables 1-11)
+│   ├── figures/                      # Figure generators
+│   │   ├── regenerate_figures_bw.py             # All paper figures (B&W, 300 DPI)
+│   │   └── plot_extreme_sentiment_images.py     # Appendix figure
+│   ├── mechanism/                    # §4.1 cross-sectional mechanism
+│   │   ├── g1_high_vol_joint.py
+│   │   ├── g2_retail_density_ranking.py
+│   │   └── g3_amihud_control.py
+│   └── robustness/                   # §4.5 / §6 robustness battery
+│       ├── break_test_oos_coefficient.py        # §6.1 PELT + Brown-Durbin-Evans
+│       ├── nw_bandwidth_sensitivity.py          # NW(5/10/15/22) + Andrews/Newey plug-in
+│       ├── regression_lag_validation.py
+│       ├── sharpe_bootstrap_costs.py            # §4.5 bootstrap CI + cost grid
+│       ├── tune_ridge_alpha_cv.py               # §4.6 Ridge α CV
+│       ├── threshold_sensitivity_sweep.py       # §4.1 supplementary CSV generator
+│       ├── threshold_sensitivity.csv            # 6 thresholds × 5 indices × 10 lags
+│       ├── r7_block_length_sensitivity.py       # Bootstrap b ∈ {5, 14, 22}
+│       ├── r7_block_length_sensitivity.csv
+│       ├── r7_trailing_momentum_control.py      # 5/10/20/60-day cumulative controls
+│       └── r7_trailing_momentum_control.csv
 │
-├── Mechanism / cross-sectional analysis (kept at root)
-│   ├── g1_high_vol_joint.py        # G1: high-vol joint regression across 5 indices
-│   ├── g2_retail_density_ranking.py  # G2: retail-density ordering proxies
-│   └── g3_amihud_control.py        # G3: Amihud illiquidity control
+├── scripts/                          # Specialised rounds-of-revision robustness checks
+│   ├── tetlock_orthogonalization.py
+│   ├── clustered_se_pooled.py
+│   ├── oos_rolling_standardization.py
+│   ├── regime_conditional_oos.py
+│   ├── placebo_image_count.py
+│   ├── r2_log_news_count_control.py
+│   └── r07_full_sample_auc.py
 │
-├── Methodology robustness (kept at root)
-│   ├── nw_bandwidth_sensitivity.py     # NW lags ∈ {5, 10, 15, 22}
-│   └── break_test_oos_coefficient.py   # Bai-Perron + Brown-Durbin-Evans
+├── ai_image_annotation/              # VLM-ensemble validation pipeline
+│   ├── ai_image_sentiment_annotator.py          # Multi-LLM caller (temp=0)
+│   ├── ai_image_quality_annotator.py            # Quality LLM annotator
+│   ├── validate_old_vit_with_llm_consensus.py   # §6.2 AUC + mean diff
+│   ├── retry_failed_rows.py                     # Failed-query retry helper
+│   ├── local_auth.example.json                  # API config template
+│   └── run_artifacts/
+│       └── ai_image_sentiment_annotations.csv   # Deposited per-image labels (1,253 rows)
 │
-├── Backtesting (kept at root)
-│   ├── sharpe_bootstrap_costs.py   # Strategy bootstrap CI + transaction costs
-│   └── tune_ridge_alpha_cv.py      # Pre-OOS Ridge CV (locked α)
+├── docs/
+│   ├── REPRODUCE.md                  # Paper element → script map
+│   ├── data_sources.md               # External data dependencies
+│   ├── phase0_results_summary.md     # Pre-headline gate decisions
+│   └── phase1_results_summary.md     # Mechanism-test phase summary
 │
-├── ai_image_annotation/            # LLM consensus validation pipeline
+├── archive/v3_csi_family_alternative/  # Rejected alternative index family
 │
-├── docs/                           # Project documentation
-│   ├── data_sources.md             # AKShare endpoints + CSMAR coverage memo
-│   ├── phase0_results_summary.md   # Phase 0 gate decisions
-│   └── phase1_results_summary.md   # Phase 1 mechanism-test summary
-│
-├── archive/                        # Materials kept for transparency, not published
-│   ├── README.md                   # Archive index
-│   └── v3_csi_family_alternative/  # Alternative CSI-family index design
-│                                     evaluated 2026-04-29 and not adopted
-│
-├── requirements.txt                # Python dependencies
-├── LICENSE                         # MIT
-└── README.md                       # This file
+├── requirements.txt
+├── LICENSE                           # MIT
+└── README.md
 ```
 
 ---
@@ -87,92 +103,112 @@ Two daily market-level sentiment indices are constructed from Sina Finance news 
 
 ### Step 1 — Get the data
 
-Download from [Google Drive](https://drive.google.com/drive/folders/1Xzrj9ul8x8Ydis3fNpBx9-FgEJvRFDgx?usp=drive_link) and place in:
-- `results/merged_market_sentiment_data_old.csv`
-- `three_four_five_factor_daily/fivefactor_daily.csv`
+The published artifact ships scripts but not the heavy data files. Place
+externally:
 
-### Step 2 — Install Python deps
+| File | Where to put it | Source |
+|---|---|---|
+| `merged_market_sentiment_data_old.csv` | `results/` | rebuild via `pipeline/13_merge_data_and_calculate_returns_pcnn.py`, or request from authors |
+| `fivefactor_daily.csv` | `three_four_five_factor_daily/` | CUFE Chinese Fama-French daily file |
+| `improved_vit_sentiment_model_old.pth` (329 MB) | repo root | available from authors on request; train locally via `pipeline/08_vit_transferlearning_pcnn.py` on the public You et al. (2015) PCNN dataset |
+
+### Step 2 — Install Python dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 3 — Run paper-table scripts (each writes CSV/JSON/figures into `results/`)
-
-> **Run from repo root.** All paths in scripts resolve relative to the
-> repository root, so always invoke as `python analysis/tables/...` not `cd analysis/tables && python ...`.
+### Step 3 — Run analysis scripts (always from repo root)
 
 ```bash
-# Headline regressions
-python analysis/tables/regression_tables_oldmodel.py        # Tables 1–4
+# Headline regressions (Tables 1-4)
+python analysis/tables/regression_tables_oldmodel.py
 
-# Conditional / portfolio / factor / OOS
-python analysis/tables/paper_table5_conditional.py
+# §4.1 cross-sectional mechanism
+python analysis/mechanism/g1_high_vol_joint.py
+python analysis/mechanism/g2_retail_density_ranking.py
+python analysis/mechanism/g3_amihud_control.py
+python analysis/robustness/threshold_sensitivity_sweep.py
+
+# §4.5 strategy + transaction cost
 python analysis/tables/paper_table6_portfolio.py
 python analysis/tables/paper_table7_ff3.py
-python analysis/tables/paper_table8_oos.py                  # ~5 min
+python analysis/robustness/sharpe_bootstrap_costs.py
+python analysis/robustness/r7_block_length_sensitivity.py
+python analysis/robustness/r7_trailing_momentum_control.py
+
+# §4.6 out-of-sample
+python analysis/tables/paper_table8_oos.py
 python analysis/tables/paper_table8b_oos_extensions_old.py
+python analysis/robustness/tune_ridge_alpha_cv.py
+python scripts/oos_rolling_standardization.py
+python scripts/regime_conditional_oos.py
+python scripts/clustered_se_pooled.py
+
+# §6 robustness
+python analysis/robustness/break_test_oos_coefficient.py
+python analysis/robustness/nw_bandwidth_sensitivity.py
 python analysis/tables/paper_table9_robustness.py
 python analysis/tables/paper_table10_strategy_robustness_old.py
 python analysis/tables/paper_table11_vit_quality_robustness.py
 
-# All paper figures (B&W, 300 DPI)
+# Figures
 python analysis/figures/regenerate_figures_bw.py
-
-# Mechanism (cross-sectional, kept at root)
-python g1_high_vol_joint.py
-python g2_retail_density_ranking.py
-python g3_amihud_control.py
-
-# Methodology robustness (Round 7)
-python nw_bandwidth_sensitivity.py
-python break_test_oos_coefficient.py
-python analysis/robustness/r7_block_length_sensitivity.py
-python analysis/robustness/r7_trailing_momentum_control.py
-
-# Strategy
-python sharpe_bootstrap_costs.py
+python analysis/figures/plot_extreme_sentiment_images.py
 ```
+
+> **Run all commands from the repository root.** Scripts use relative paths
+> (e.g., `DATA = "results/merged_market_sentiment_data_old.csv"`), so
+> invoke as `python analysis/tables/...` rather than `cd analysis/tables && python ...`.
+
+See [`docs/REPRODUCE.md`](docs/REPRODUCE.md) for the full paper-element → script map.
 
 ---
 
 ## Rebuild the Sentiment Dataset (Optional)
 
-To rebuild PhotoPes / TextPes from raw news:
+To rebuild PhotoPes / TextPes from raw Sina news:
 
 ```bash
-# Pipeline scripts (require MongoDB and a GPU for steps 8–9)
-python 1sina_news_category_crawler.py
-python 2news_scraper.py
-python 3image_downlowder.py
-python 4image_basic_filter.py
-python 5clarity_analysis_helper.py
-python 6text_analysis_helper.py
-python 7image_quality_processor.py
-python 8vit_transferlearning_old.py
-python 9sentiment_analyzer_oldmodel.py
-python 10calculate_daily_photopes_oldmodel.py
-python 11calculate_daily_textpes.py
-python 12recalculate_quality_scores.py
-python 13merge_data_and_calculate_returns_oldmodel.py
+# Requires MongoDB and a GPU for steps 08-09
+python pipeline/01_sina_news_category_crawler.py
+python pipeline/02_news_scraper.py
+python pipeline/03_image_downloader.py
+python pipeline/04_image_basic_filter.py
+python pipeline/05_clarity_analysis_helper.py
+python pipeline/06_text_analysis_helper.py
+python pipeline/07_image_quality_processor.py
+python pipeline/08_vit_transferlearning_pcnn.py     # Trains improved_vit_sentiment_model_old.pth
+python pipeline/09_sentiment_analyzer_pcnn.py
+python pipeline/10_calculate_daily_photopes_pcnn.py
+python pipeline/11_calculate_daily_textpes.py
+python pipeline/12_recalculate_quality_scores.py
+python pipeline/13_merge_data_and_calculate_returns_pcnn.py
 ```
-
-Pre-trained ViT checkpoint (`improved_vit_sentiment_model_old.pth`) is not in the repo (>500 MB) — train via step 8 or contact the author.
 
 ---
 
-## Branches
+## §6.2 LLM External Validation Reproducibility
 
-| Branch | Contents |
-|---|---|
-| `main` | Submission-ready paper pipeline + reproduction scripts + paper source |
-| `pipeline-backup` | Pre-cleanup snapshot of the full repository state |
+All AUC, mean-difference, and Pearson correlation numbers reported in §6.2
+of the paper can be reproduced deterministically from the deposited
+per-image labels at
+`ai_image_annotation/run_artifacts/ai_image_sentiment_annotations.csv`
+(1,253 rows; three model scores + labels + free-form reasons per image)
+without re-querying any LLM API.
+
+The three-model VLM ensemble was queried at `temperature=0`; because the
+Anthropic API does not currently expose a `seed` parameter and the
+deployment uses a third-party aggregator, exact LLM outputs are not
+guaranteed to replicate byte-for-byte across re-queries. Downstream
+statistics are unaffected because they are computed on the deposited
+labels.
 
 ---
 
 ## Citation
 
-If you use this code or data, please cite the working paper draft (citation TBA on Zenodo deposit).
+Working paper draft (citation TBA on Zenodo deposit).
 
 ---
 
