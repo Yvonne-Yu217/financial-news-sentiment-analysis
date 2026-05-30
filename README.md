@@ -1,9 +1,11 @@
-# Quantifying Investor Sentiment with Multimodal Data in the Chinese Stock Market
+# Seeing Sentiment — Codebase
 
-Replication code and paper source for:
+Replication code, data pipeline, and analysis scripts for:
 
-> **"Quantifying Investor Sentiment with Multimodal Data in the Chinese Stock Market"**
-> Yi Yu — M.S. Data Science, New York University · yy5919@nyu.edu
+> **"Seeing Sentiment: News Images, Retail Participation, and Chinese A-Share Index Returns"**
+> Liu, Wang, Yu, Zeng (2026). Authors listed alphabetically.
+
+**Manuscript repo (LaTeX source + PDF):** [seeing-sentiment-manuscript](https://github.com/Yvonne-Yu217/seeing-sentiment-manuscript)
 
 ---
 
@@ -25,13 +27,6 @@ Two daily market-level sentiment indices are constructed from Sina Finance news 
 ## Repository Structure
 
 ```
-├── paper/                          # LaTeX manuscript + bibliography
-│   ├── main.tex                    # 54-page manuscript
-│   ├── main.bib                    # Bibliography
-│   ├── AEA.cls / aea.bst           # AEA journal class files
-│   ├── main.pdf                    # Compiled PDF
-│   └── figures/                    # Paper figures (B&W, 300 DPI)
-│
 ├── 1–14*.py                        # Data pipeline (sequential)
 │
 ├── analysis/
