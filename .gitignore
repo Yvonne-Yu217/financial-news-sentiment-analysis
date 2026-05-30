@@ -99,8 +99,10 @@ failed_downloads*.json
 temp/
 tmp/
 
-# AI annotation outputs
-ai_image_annotation/run_artifacts/
+# AI annotation outputs (ignore contents, not the dir itself, so we can carve out exceptions)
+ai_image_annotation/run_artifacts/*
+# but DO publish the per-image LLM consensus CSV (Appendix A1 reproducibility)
+!ai_image_annotation/run_artifacts/ai_image_sentiment_annotations.csv
 
 # History files
 .history/
