@@ -140,6 +140,7 @@ three_four_five_factor_daily/
 # ViT (which IS in the repo) outperforms this v2 variant. The v2 pipeline is
 # kept locally for reproducibility but is not part of the published artifact.
 ai_image_annotation/build_sentiment_training_dataset.py
+ai_image_annotation/build_training_dataset.py
 ai_image_annotation/8vit_transferlearning_v2.py
 ai_image_annotation/9sentiment_analyzer_v2.py
 ai_image_annotation/10calculate_daily_photopes_v2.py
